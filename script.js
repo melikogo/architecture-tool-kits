@@ -4,7 +4,7 @@ if (
   document.getElementById("root")
 ) {
   const h = React.createElement;
-  const { useEffect, useMemo, useRef, useState } = React;
+  const { useCallback, useContext, useEffect, useMemo, useRef, useState } = React;
 
   const PRESETS = [20, 50, 100, 200, 500];
   const UNIT_OPTIONS = ["m", "cm", "mm", "ft-in"];
@@ -132,6 +132,109 @@ if (
     return xs.filter(Boolean).join(" ");
   }
 
+  const LANG_STORAGE_KEY = "structura-lang";
+
+  function structuraGetByPath(obj, path) {
+    if (!obj || !path) return undefined;
+    return path.split(".").reduce((a, k) => (a != null && a[k] !== undefined && a[k] !== null ? a[k] : undefined), obj);
+  }
+
+  const LanguageContext = React.createContext(null);
+
+  function LanguageProvider({ children }) {
+    const [lang, setLangState] = useState(() => {
+      try {
+        const s = localStorage.getItem(LANG_STORAGE_KEY);
+        if (s === "tr" || s === "en") return s;
+      } catch (e) {
+        /* ignore */
+      }
+      return "en";
+    });
+
+    const setLang = useCallback((next) => {
+      const v = next === "tr" ? "tr" : "en";
+      setLangState(v);
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, v);
+      } catch (e) {
+        /* ignore */
+      }
+    }, []);
+
+    const dict = useMemo(() => {
+      const packs =
+        typeof window !== "undefined" && window.STRUCTURA_TRANSLATIONS ? window.STRUCTURA_TRANSLATIONS : { en: {}, tr: {} };
+      return { en: packs.en || {}, tr: packs.tr || {} };
+    }, []);
+
+    const t = useCallback(
+      (path) => {
+        const cur = structuraGetByPath(dict[lang], path);
+        if (cur !== undefined && cur !== null && String(cur) !== "") return cur;
+        const en = structuraGetByPath(dict.en, path);
+        if (en !== undefined && en !== null && String(en) !== "") return en;
+        return path;
+      },
+      [lang, dict]
+    );
+
+    const mergeToolMeta = useCallback(
+      (tool) => {
+        if (!tool || !tool.id) return tool;
+        const p = `tools.${tool.id}`;
+        return {
+          ...tool,
+          label: t(`${p}.label`),
+          description: t(`${p}.description`),
+          intro: t(`${p}.intro`),
+        };
+      },
+      [t]
+    );
+
+    const value = useMemo(() => ({ lang, setLang, t, mergeToolMeta }), [lang, setLang, t, mergeToolMeta]);
+
+    useEffect(() => {
+      if (typeof document !== "undefined") {
+        document.documentElement.lang = lang === "tr" ? "tr" : "en";
+      }
+    }, [lang]);
+
+    return h(LanguageContext.Provider, { value }, children);
+  }
+
+  function useI18n() {
+    const ctx = useContext(LanguageContext);
+    if (!ctx) throw new Error("Structura: useI18n must be used within LanguageProvider");
+    return ctx;
+  }
+
+  /** Maps status.text (English source) to translation path under common.* */
+  const STATUS_TEXT_TO_KEY = {
+    Ready: "common.ready",
+    "Enter a value to calculate.": "common.statusEnterValue",
+    "Added to history.": "common.statusAddedHistory",
+    "Updated scale.": "common.statusUpdatedScale",
+    "Invalid scale ratio.": "common.statusInvalidScale",
+    "Open a calculator to copy results.": "common.openCalculatorToCopy",
+    "Enter valid thickness (mm) for each layer.": "common.statusValidThickness",
+    "Copied to clipboard.": "common.copied",
+    "Copy failed. Try again.": "common.copyFailed",
+    "Enter valid floor area, travel distance, exits, and floors.": "common.statusValidFireInputs",
+    "Enter valid floor area, window area, and room depth.": "common.statusValidDaylightInputs",
+    "Enter a valid total parking area (m²).": "common.statusValidParkingArea",
+    "Enter a valid span length.": "common.statusValidSpanLength",
+    "Nothing to copy yet.": "common.nothingToCopy",
+    "CSV exported.": "common.statusCsvExported",
+    "Enter a valid area (m²).": "common.statusValidAreaM2",
+    "Room added to list.": "common.statusRoomAdded",
+    "jsPDF not available.": "common.pdfUnavailable",
+    "PDF exported.": "common.pdfExported",
+    "PDF export failed.": "common.pdfFailed",
+    "Loaded from history.": "common.statusLoadedHistory",
+  };
+
   function parseFtInToMeters(s) {
     if (s == null) return null;
     const str = String(s).trim();
@@ -187,8 +290,6 @@ if (
     const rounded = Math.round(n * 10) / 10;
     return rounded.toFixed(1);
   }
-
-  const STRUCTURA_TAGLINE = "Professional tools for architects and engineers";
 
   function AnimatedNumberText({ valueText, className }) {
     const [display, setDisplay] = useState(valueText);
@@ -258,6 +359,33 @@ if (
             h("circle", { cx: "12", cy: "12", r: "4", stroke: "currentColor", strokeWidth: "2" })
           )
     );
+  }
+
+  function LangToggleButton() {
+    const { lang, setLang } = useI18n();
+    const seg = (active) =>
+      classNames(
+        "px-3.5 min-w-[2.5rem] h-10 flex items-center justify-center transition-colors duration-150 text-[11px] font-extrabold tracking-wide",
+        active
+          ? "bg-[var(--st-accent)] text-white"
+          : "bg-[var(--st-bg)] text-[var(--st-muted)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
+      );
+    return h(
+      "div",
+      {
+        className: "flex rounded-full border border-[var(--st-border)] overflow-hidden",
+        role: "group",
+        "aria-label": "Language",
+      },
+      [
+        h("button", { type: "button", onClick: () => setLang("en"), className: seg(lang === "en"), "aria-pressed": lang === "en" }, "EN"),
+        h("button", { type: "button", onClick: () => setLang("tr"), className: seg(lang === "tr"), "aria-pressed": lang === "tr" }, "TR"),
+      ]
+    );
+  }
+
+  function NavToggles({ theme, setTheme }) {
+    return h("div", { className: "flex items-center gap-2 shrink-0" }, [h(LangToggleButton), h(ThemeToggleButton, { theme, setTheme })]);
   }
 
   function LandingToolIcon({ toolId, category }) {
@@ -497,6 +625,16 @@ if (
   }
 
   function App() {
+    const { t, mergeToolMeta } = useI18n();
+
+    const localizeStatus = useCallback(
+      (text) => {
+        const key = STATUS_TEXT_TO_KEY[text];
+        return key ? t(key) : text;
+      },
+      [t]
+    );
+
     const TOOL_ITEMS = [
       {
         id: "scale",
@@ -560,15 +698,18 @@ if (
       },
     ];
 
-    const TOOL_GROUPS = [
-      {
-        id: "geometry",
-        label: "Geometry",
-        toolIds: ["scale", "stair", "ramp", "span", "siteCoverage", "parking", "room"],
-      },
-      { id: "compliance", label: "Compliance", toolIds: ["fireEscape"] },
-      { id: "environment", label: "Environment", toolIds: ["daylight", "uValue"] },
-    ];
+    const TOOL_GROUPS = useMemo(
+      () => [
+        {
+          id: "geometry",
+          label: t("nav.geometry"),
+          toolIds: ["scale", "stair", "ramp", "span", "siteCoverage", "parking", "room"],
+        },
+        { id: "compliance", label: t("nav.compliance"), toolIds: ["fireEscape"] },
+        { id: "environment", label: t("nav.environment"), toolIds: ["daylight", "uValue"] },
+      ],
+      [t]
+    );
 
     const TOOL_PATHS = {
       landing: "/",
@@ -705,18 +846,20 @@ if (
 
     const activeToolMeta = useMemo(() => {
       if (activeTool === "landing") {
-        return { id: "landing", label: "Structura", description: STRUCTURA_TAGLINE, intro: STRUCTURA_TAGLINE };
+        const tag = t("landing.tagline");
+        return { id: "landing", label: "Structura", description: tag, intro: tag };
       }
-      return TOOL_ITEMS.find((t) => t.id === activeTool) ?? TOOL_ITEMS[0];
-    }, [activeTool]);
+      const base = TOOL_ITEMS.find((x) => x.id === activeTool) ?? TOOL_ITEMS[0];
+      return mergeToolMeta(base);
+    }, [activeTool, mergeToolMeta, t]);
 
     useEffect(() => {
       if (activeTool === "landing") {
-        document.title = "Structura — Professional tools for architects and engineers";
+        document.title = `Structura — ${t("landing.tagline")}`;
       } else {
         document.title = `${activeToolMeta.label} — Structura`;
       }
-    }, [activeTool, activeToolMeta.label]);
+    }, [activeTool, activeToolMeta.label, t]);
 
     const roomProgramTotal = useMemo(() => {
       const s = roomProgramRows.reduce((acc, r) => acc + r.userAreaM2, 0);
@@ -724,8 +867,8 @@ if (
     }, [roomProgramRows]);
 
     useEffect(() => {
-      const t = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
-      if (t) setRoomProgramAreaStr(formatSmartNumber(t.minAreaM2));
+      const roomType = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
+      if (roomType) setRoomProgramAreaStr(formatSmartNumber(roomType.minAreaM2));
     }, [roomProgramTypeId]);
 
     function navigateHome() {
@@ -1441,7 +1584,7 @@ if (
       if (tab === "convert") {
         return {
           mode: "Convert",
-          title: "Scaled outputs",
+          titleKey: "common.scaledOutputs",
           lenOut: convertScaledLenM == null ? null : metersToLengthDisplay(convertScaledLenM, unit),
           areaOut:
             convertScaledAreaM2 == null ? null : meters2ToAreaDisplay(convertScaledAreaM2, unit),
@@ -1457,7 +1600,7 @@ if (
       if (tab === "reverse") {
         return {
           mode: "Reverse",
-          title: "Real-world outputs",
+          titleKey: "common.realWorldOutputs",
           lenOut: reverseRealLenM == null ? null : metersToLengthDisplay(reverseRealLenM, unit),
           areaOut:
             reverseRealAreaM2 == null ? null : meters2ToAreaDisplay(reverseRealAreaM2, unit),
@@ -1471,7 +1614,7 @@ if (
       // paper
       return {
         mode: "Paper",
-        title: "Paper size calculator",
+        titleKey: "common.paperSizeCalculator",
         paperAreaOut: paperAreaM2 == null ? null : meters2ToAreaDisplay(paperAreaM2, unit),
         realAreaOut: paperRealAreaM2 == null ? null : meters2ToAreaDisplay(paperRealAreaM2, unit),
       };
@@ -1982,8 +2125,8 @@ if (
     }
 
     function addRoomToProgram() {
-      const t = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
-      if (!t) return;
+      const roomType = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
+      if (!roomType) return;
       const a = Number(roomProgramAreaStr);
       if (!Number.isFinite(a) || a <= 0) {
         setStatus({ state: "warn", text: "Enter a valid area (m²)." });
@@ -1993,9 +2136,9 @@ if (
         ...prev,
         {
           uid: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-          name: t.name,
-          minAreaM2: t.minAreaM2,
-          minDimM: t.minDimM,
+          name: roomType.name,
+          minAreaM2: roomType.minAreaM2,
+          minDimM: roomType.minDimM,
           userAreaM2: Math.round(a * 10) / 10,
         },
       ]);
@@ -2800,10 +2943,14 @@ if (
       );
       return h("div", { className: "flex items-start justify-between gap-3 mb-5 pb-4 border-b border-[var(--st-border)]" }, [
         h("div", {}, [
-          h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, computed.title),
-          h("div", { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold" }, `Scale 1:${denomSafe} • Unit ${unitLabel(unit)}`),
+          h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, t(computed.titleKey)),
+          h(
+            "div",
+            { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold" },
+            `${t("common.scale")} 1:${denomSafe} • ${t("common.unit")} ${unitLabel(unit)}`
+          ),
         ]),
-        h("div", { className: pillClasses }, status.text),
+        h("div", { className: pillClasses }, localizeStatus(status.text)),
       ]);
     }
 
@@ -2812,13 +2959,13 @@ if (
         return h("div", {}, [
           h("div", { className: "grid grid-cols-1 gap-5" }, [
             h(ValueBlock, {
-              label: "Paper area (model)",
+              label: t("common.paperAreaModel"),
               valueText: computed.paperAreaOut || "—",
               unitText: areaUnitLabel(unit),
               big: true,
             }),
             h(ValueBlock, {
-              label: "Real area that fits",
+              label: t("common.realAreaFits"),
               valueText: computed.realAreaOut || "—",
               unitText: areaUnitLabel(unit),
               big: true,
@@ -2829,12 +2976,12 @@ if (
             h(
               "button",
               { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
-              "Copy as text"
+              t("common.copyAsText")
             ),
             h(
               "button",
               { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
-              "Export CSV"
+              t("common.exportCsv")
             ),
             h(
               "button",
@@ -2843,7 +2990,7 @@ if (
                 onClick: () => setPdfModalOpen(true),
                 className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
               },
-              "Export PDF"
+              t("common.exportPdf")
             ),
           ]),
         ]),
@@ -2851,10 +2998,10 @@ if (
       }
 
       const isConvert = tab === "convert";
-      const lenLabel = isConvert ? "Scaled length" : "Real length";
-      const areaLabel = isConvert ? "Scaled area" : "Real area";
-      const dimsLabel = isConvert ? "Scaled width / height / depth" : "Real width / height / depth";
-      const volLabel = isConvert ? "Scaled volume" : "Real volume";
+      const lenLabel = isConvert ? t("common.scaledLength") : t("common.realLength");
+      const areaLabel = isConvert ? t("common.scaledArea") : t("common.realArea");
+      const dimsLabel = isConvert ? t("common.scaledDims") : t("common.realDims");
+      const volLabel = isConvert ? t("common.scaledVolume") : t("common.realVolume");
 
       const dimsText = [
         computed.wOut ?? "—",
@@ -2904,12 +3051,12 @@ if (
             h(
               "button",
               { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
-              "Copy as text"
+              t("common.copyAsText")
             ),
             h(
               "button",
               { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
-              "Export CSV"
+              t("common.exportCsv")
             ),
             h(
               "button",
@@ -2918,7 +3065,7 @@ if (
                 onClick: () => setPdfModalOpen(true),
                 className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
               },
-              "Export PDF"
+              t("common.exportPdf")
             ),
           ]),
         ]),
@@ -2927,17 +3074,17 @@ if (
 
     function TabBar() {
       const tabs = [
-        { id: "convert", label: "Convert" },
-        { id: "reverse", label: "Reverse" },
-        { id: "paper", label: "Paper size" },
+        { id: "convert", label: t("common.convert") },
+        { id: "reverse", label: t("common.reverse") },
+        { id: "paper", label: t("common.paperTab") },
       ];
       return h("div", { className: "flex gap-2 bg-[var(--st-bg)] border border-[var(--st-border)] rounded-2xl p-2 mb-4" }, [
-        tabs.map((t) =>
+        tabs.map((tabItem) =>
           h(ValueButton, {
-            key: t.id,
-            active: tab === t.id,
-            onClick: () => setTab(t.id),
-          }, t.label)
+            key: tabItem.id,
+            active: tab === tabItem.id,
+            onClick: () => setTab(tabItem.id),
+          }, tabItem.label)
         ),
       ]);
     }
@@ -2946,8 +3093,8 @@ if (
       return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
         h("div", { className: "flex items-end justify-between gap-4 mb-3" }, [
           h("div", {}, [
-            h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" }, "Scale"),
-            h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, "Preset buttons + custom ratio"),
+            h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" }, t("common.scale")),
+            h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.customRatio")),
           ]),
           h("div", { className: "text-right" }, [
             h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, "1 :"),
@@ -2971,7 +3118,7 @@ if (
               h(
                 "button",
                 { type: "button", onClick: applyCustomDenom, className: "h-11 px-4 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold hover:brightness-110 transition-colors duration-150" },
-                "Apply"
+                t("common.apply")
               ),
             ]),
           ]),
@@ -3001,8 +3148,8 @@ if (
     function UnitSwitcher() {
       return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
         h("div", { className: "mb-3" }, [
-          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)]" }, "Unit"),
-          h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, "Affects input + output display"),
+          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)]" }, t("common.unit")),
+          h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.affectsUnit")),
         ]),
         h("div", { className: "flex flex-wrap gap-2" }, [
           UNIT_OPTIONS.map((u) =>
@@ -3028,14 +3175,14 @@ if (
 
     function HistoryPanel() {
       return h("div", {}, [
-        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, "History (last 6)"),
+        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, t("common.historyLast6")),
         history.length === 0
-          ? h("div", { className: "text-xs text-[var(--st-muted)] font-semibold" }, "Press Enter to add a calculation.")
+          ? h("div", { className: "text-xs text-[var(--st-muted)] font-semibold" }, t("common.pressEnterHistory"))
           : h("div", { className: "flex flex-col gap-2" }, history.map((it, idx) => {
               const label =
                 it.tab === "paper"
-                  ? `Paper ${it.inputs.paperSize} • 1:${it.denom}`
-                  : `${it.tab === "convert" ? "Convert" : "Reverse"} • 1:${it.denom}`;
+                  ? `${t("common.paperShort")} ${it.inputs.paperSize} • 1:${it.denom}`
+                  : `${it.tab === "convert" ? t("common.convert") : t("common.reverse")} • 1:${it.denom}`;
               return h(
                 "button",
                 {
@@ -3069,7 +3216,7 @@ if (
                 },
                 [
                   h("div", { key: "t", className: "text-xs font-extrabold tracking-wide text-[var(--st-fg)]" }, label),
-                  h("div", { key: "s", className: "text-[11px] mt-1 text-[var(--st-muted)] font-semibold" }, `Unit ${it.unit}`),
+                  h("div", { key: "s", className: "text-[11px] mt-1 text-[var(--st-muted)] font-semibold" }, `${t("common.unit")} ${it.unit}`),
                 ]
               );
             })),
@@ -3093,16 +3240,22 @@ if (
           ? h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
               // 2D
               h(SectionTitle, {
-                label: tab === "convert" ? "2D (real → model)" : "2D (model → real)",
-                hint: "Length + area at selected scale",
+                label: tab === "convert" ? t("common.twoDRealToModel") : t("common.twoDModelToReal"),
+                hint: t("common.twoDHint"),
               }),
               h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-5" }, [
                 h(Field, {
-                  label: tab === "convert" ? `Real length (${unitLabel(unit)})` : `Model length (${unitLabel(unit)})`,
+                  label:
+                    tab === "convert"
+                      ? `${t("common.realLenLabel")} (${unitLabel(unit)})`
+                      : `${t("common.modelLenLabel")} (${unitLabel(unit)})`,
                   children: h(LenInput, { value: tab === "convert" ? realLen : modelLen, onChange: tab === "convert" ? setRealLen : setModelLen, placeholder: isFt ? "e.g., 5-10" : "e.g., 4.2" }),
                 }),
                 h(Field, {
-                  label: tab === "convert" ? `Real area (${areaUnitLabel(unit)})` : `Model area (${areaUnitLabel(unit)})`,
+                  label:
+                    tab === "convert"
+                      ? `${t("common.realAreaField")} (${areaUnitLabel(unit)})`
+                      : `${t("common.modelAreaField")} (${areaUnitLabel(unit)})`,
                   children: h(AreaInput, { value: tab === "convert" ? realArea : modelArea, onChange: tab === "convert" ? setRealArea : setModelArea, placeholder: "e.g., 12.5" }),
                 }),
               ]),
@@ -3112,17 +3265,17 @@ if (
               h("div", { className: "h-px bg-[var(--st-border)] my-6" }),
 
               // 3D
-              h(SectionTitle, { label: "3D (dimensions + volume)", hint: "Width × height × depth" }),
+              h(SectionTitle, { label: t("common.dimensionsVolume"), hint: t("common.threeDHint") }),
               h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
-                h(Field, { label: tab === "convert" ? `Width (${unitLabel(unit)})` : `Width (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realW : modelW, onChange: tab === "convert" ? setRealW : setModelW, placeholder: "e.g., 3" }) }),
-                h(Field, { label: tab === "convert" ? `Height (${unitLabel(unit)})` : `Height (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realH : modelH, onChange: tab === "convert" ? setRealH : setModelH, placeholder: "e.g., 2.7" }) }),
-                h(Field, { label: tab === "convert" ? `Depth (${unitLabel(unit)})` : `Depth (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realD : modelD, onChange: tab === "convert" ? setRealD : setModelD, placeholder: "e.g., 1.5" }) }),
+                h(Field, { label: `${t("common.width")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realW : modelW, onChange: tab === "convert" ? setRealW : setModelW, placeholder: "e.g., 3" }) }),
+                h(Field, { label: `${t("common.height")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realH : modelH, onChange: tab === "convert" ? setRealH : setModelH, placeholder: "e.g., 2.7" }) }),
+                h(Field, { label: `${t("common.depth")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realD : modelD, onChange: tab === "convert" ? setRealD : setModelD, placeholder: "e.g., 1.5" }) }),
               ]),
             ])
           : h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
-              h(SectionTitle, { label: "Paper size calculator", hint: "How much real area fits at your scale" }),
+              h(SectionTitle, { label: t("common.paperSizeCalculator"), hint: t("common.paperAreaFitsHint") }),
               h(Field, {
-                label: "Select paper size (A0–A4)",
+                label: t("common.selectPaper"),
                 children: h("select", {
                   value: paperSize,
                   onChange: (e) => setPaperSize(e.target.value),
@@ -3130,7 +3283,7 @@ if (
                     "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                 }, Object.keys(PAPER_SIZES).map((k) => h("option", { key: k, value: k }, k))),
               }),
-              h("div", { className: "mt-4 text-xs text-[var(--st-muted)] font-semibold" }, "Tip: change scale presets and instantly see the real area that fits."),
+              h("div", { className: "mt-4 text-xs text-[var(--st-muted)] font-semibold" }, t("common.tipPaper")),
             ]),
 
         h("div", { className: "mt-5" }, [
@@ -3145,7 +3298,7 @@ if (
               onClick: onReset,
               className: "w-full h-12 rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] text-[var(--st-fg)] font-extrabold hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors",
             },
-            "Reset"
+            t("common.reset")
           ),
         ]),
       ]);
@@ -3156,15 +3309,15 @@ if (
         const rt = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId) ?? ROOM_PROGRAM_TYPES[0];
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Room Program",
-            hint: "Inputs",
+            title: t("tools.room.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Room type",
-                hint: "Guideline minimums are indicative — verify with local codes.",
+                label: t("common.roomType"),
+                hint: t("common.roomTypeHint"),
               }),
               h(Field, {
-                label: "Select",
+                label: t("common.select"),
                 children: h(
                   "select",
                   {
@@ -3183,12 +3336,12 @@ if (
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-xs font-semibold text-[var(--st-muted)] space-y-1",
                 },
                 [
-                  h("div", { key: "a" }, `Recommended minimum area: ${formatSmartNumber(rt.minAreaM2)} m²`),
-                  h("div", { key: "d" }, `Recommended minimum dimension: ${formatSmartNumber(rt.minDimM)} m`),
+                  h("div", { key: "a" }, `${t("common.recommendedMinArea")}: ${formatSmartNumber(rt.minAreaM2)} m²`),
+                  h("div", { key: "d" }, `${t("common.recommendedMinDim")}: ${formatSmartNumber(rt.minDimM)} m`),
                 ]
               ),
               h(Field, {
-                label: "Area (m²) — override if needed",
+                label: t("common.areaOverride"),
                 children: h(InputBase, {
                   value: roomProgramAreaStr,
                   onChange: setRoomProgramAreaStr,
@@ -3206,20 +3359,20 @@ if (
                   className:
                     "w-full h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                 },
-                "Add to list"
+                t("common.addToList")
               ),
             ]),
           }),
           h(Card, {
-            title: "Room list",
-            hint: "Program & export",
+            title: t("common.roomList"),
+            hint: t("common.programAndExport"),
             tone: "results",
             children: h("div", { className: "space-y-4" }, [
               roomProgramRows.length === 0
                 ? h(
                     "div",
                     { className: "text-sm font-semibold text-[var(--st-muted)]" },
-                    "No rooms yet. Add a room from the left."
+                    t("common.noRoomsYet")
                   )
                 : h(
                     "div",
@@ -3232,9 +3385,9 @@ if (
                           "thead",
                           { className: "bg-[color-mix(in_srgb,var(--st-fg)_8%,var(--st-bg))] text-[10px] font-extrabold tracking-[.18em] uppercase text-[var(--st-muted)]" },
                           h("tr", {}, [
-                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Name"),
-                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Min area"),
-                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Your area"),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, t("common.name")),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, t("common.minArea")),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, t("common.yourArea")),
                             h("th", { className: "px-4 py-3 border-b border-[var(--st-border)] w-24" }, ""),
                           ])
                         ),
@@ -3255,7 +3408,7 @@ if (
                                     className:
                                       "text-xs font-extrabold tracking-wide uppercase text-red-600 dark:text-red-400 hover:underline",
                                   },
-                                  "Delete"
+                                  t("common.delete")
                                 ),
                               ]),
                             ])
@@ -3268,7 +3421,7 @@ if (
                 h(
                   "div",
                   { className: "text-[11px] font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" },
-                  "Total program area"
+                  t("common.totalProgramArea")
                 ),
                 h("div", { className: "text-2xl font-black text-[var(--st-fg)]" }, `${formatSmartNumber(roomProgramTotal)} m²`),
               ]),
@@ -3281,7 +3434,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -3291,7 +3444,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export CSV"
+                  t("common.exportCsv")
                 ),
                 h(
                   "button",
@@ -3301,7 +3454,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -3360,7 +3513,7 @@ if (
                     className: "fill-current text-[9px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `Aisle ${formatSmartNumber(pr.aisleM)} m`
+                  `${t("common.aisleM")} ${formatSmartNumber(pr.aisleM)} m`
                 ),
                 [0, 1, 2, 3].map((i) =>
                   h("rect", {
@@ -3382,20 +3535,20 @@ if (
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter a valid parking area to preview the layout."
+              t("common.enterValidParkingPreview")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Parking Calculator",
-            hint: "Inputs",
+            title: t("tools.parking.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Parking area",
-                hint: "Gross floor area allocated to parking",
+                label: t("common.parkingArea"),
+                hint: t("common.parkingAreaHint"),
               }),
               h(Field, {
-                label: "Total parking area (m²)",
+                label: t("common.totalParkingArea"),
                 children: h(InputBase, {
                   value: parkingAreaM2,
                   onChange: setParkingAreaM2,
@@ -3405,13 +3558,13 @@ if (
                   min: 0,
                 }),
               }),
-              h(SectionTitle, { label: "Parking type", hint: "Standard stall and aisle module" }),
+              h(SectionTitle, { label: t("common.parkingType"), hint: t("common.parkingTypeHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
                 h(ValueButton, { active: parkingLayout === "parallel", onClick: () => setParkingLayout("parallel") }, "Parallel"),
                 h(ValueButton, { active: parkingLayout === "perpendicular", onClick: () => setParkingLayout("perpendicular") }, "Perpendicular (90°)"),
                 h(ValueButton, { active: parkingLayout === "angled", onClick: () => setParkingLayout("angled") }, "Angled (45°)"),
               ]),
-              h(SectionTitle, { label: "Usage type", hint: "Adjusts circulation / module factor" }),
+              h(SectionTitle, { label: t("common.usageType"), hint: t("common.usageTypeHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
                 h(ValueButton, { active: parkingUsage === "residential", onClick: () => setParkingUsage("residential") }, "Residential"),
                 h(ValueButton, { active: parkingUsage === "office", onClick: () => setParkingUsage("office") }, "Office / Commercial"),
@@ -3424,13 +3577,13 @@ if (
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                "Modules use double-loaded aisles: parallel stalls 2.2×6 m; perpendicular & angled stalls 2.5×5 m with aisles as listed."
+                t("common.parkingModulesNote")
               ),
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "Capacity and efficiency",
+            title: t("common.results"),
+            hint: t("common.capacityAndEfficiency"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
@@ -3442,25 +3595,25 @@ if (
               pr
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
-                      label: "Parking spaces",
+                      label: t("common.parkingSpaces"),
                       valueText: String(pr.spaces),
-                      unitText: "spaces",
+                      unitText: t("common.spacesUnit"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Required aisle width",
+                      label: t("common.requiredAisleWidth"),
                       valueText: formatSmartNumber(pr.aisleM),
                       unitText: "m",
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Single space (W × D)",
+                      label: t("common.singleSpaceWxD"),
                       valueText: `${formatSmartNumber(pr.spaceDimW)} × ${formatSmartNumber(pr.spaceDimD)}`,
                       unitText: "m",
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "Efficiency",
+                      label: t("common.efficiency"),
                       valueText: formatSmartNumber(pr.efficiencyPct),
                       unitText: "%",
                       big: false,
@@ -3469,8 +3622,8 @@ if (
                 : null,
               pr
                 ? h("div", { className: "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3 text-sm font-semibold text-[var(--st-fg)]" }, [
-                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Ramp required"),
-                    pr.rampRequired ? "Yes (area > 500 m²)" : "No",
+                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, t("common.rampRequired")),
+                    pr.rampRequired ? t("common.rampRequiredYes") : t("common.rampRequiredNo"),
                   ])
                 : null,
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
@@ -3482,7 +3635,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -3492,7 +3645,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150 sm:col-span-1",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -3580,8 +3733,8 @@ if (
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Daylight Calculator",
-            hint: "Inputs",
+            title: t("tools.daylight.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
                 label: "Room",
@@ -3597,7 +3750,7 @@ if (
                     className:
                       "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
-                  DAYLIGHT_ROOM_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
+                  DAYLIGHT_ROOM_TYPES.map((d) => h("option", { key: d.id, value: d.id }, d.label))
                 ),
               }),
               h(Field, {
@@ -3651,8 +3804,8 @@ if (
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "EN 17037 primary · IES reference",
+            title: t("common.results"),
+            hint: t("common.enIesNotes"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
@@ -3720,7 +3873,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -3730,7 +3883,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -3826,8 +3979,8 @@ if (
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Fire Escape Calculator",
-            hint: "Inputs",
+            title: t("tools.fireEscape.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
                 label: "Building",
@@ -3843,7 +3996,7 @@ if (
                     className:
                       "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
-                  FIRE_BUILDING_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
+                  FIRE_BUILDING_TYPES.map((f) => h("option", { key: f.id, value: f.id }, f.label))
                 ),
               }),
               h(Field, {
@@ -3906,8 +4059,8 @@ if (
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "IBC 2021 — indicative",
+            title: t("common.results"),
+            hint: t("common.ibcTravel"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
@@ -3969,7 +4122,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -3979,7 +4132,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -4068,8 +4221,8 @@ if (
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Wall U-Value Calculator",
-            hint: "Inputs",
+            title: t("tools.uValue.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, { label: "Climate & type", hint: "Thresholds: indicative ASHRAE 90.1 / EU EPBD" }),
               h(Field, {
@@ -4133,7 +4286,7 @@ if (
                         className:
                           "h-9 px-4 rounded-xl border border-[var(--st-border)] bg-[var(--st-bg)] text-xs font-extrabold text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] disabled:opacity-40 disabled:cursor-not-allowed",
                       },
-                      "Remove layer"
+                      t("common.removeLayer")
                     ),
                   ]
                 )
@@ -4147,7 +4300,7 @@ if (
                   className:
                     "w-full h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
                 },
-                "Add layer"
+                t("common.addLayer")
               ),
               h(
                 "div",
@@ -4160,8 +4313,8 @@ if (
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "ASHRAE 90.1 / EU EPBD (indicative)",
+            title: t("common.results"),
+            hint: t("common.ashraeEpbd"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
@@ -4216,7 +4369,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -4226,7 +4379,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -4378,7 +4531,7 @@ if (
                     className: "fill-current text-[8px] font-bold opacity-70",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  "Plan proportions from SCR (indicative)"
+                  t("common.sitePlanProportions")
                 ),
               ]
             )
@@ -4388,13 +4541,13 @@ if (
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter a valid plot, SCR (0–1), FAR (0–10), and floor count to preview the site plan."
+              t("common.enterValidPlot")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Site Coverage Calculator",
-            hint: "Inputs",
+            title: t("tools.siteCoverage.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
                 label: "Plot & ratios",
@@ -4462,14 +4615,14 @@ if (
             ]),
           }),
           h(Card, {
-            title: "Auto-calculate",
-            hint: "Footprint, GFA & open space",
+            title: t("common.autoCalculate"),
+            hint: t("common.footprintGfa"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
                 "div",
                 { className: classNames("inline-flex items-center min-h-9 px-4 py-2 rounded-full text-[10px] font-extrabold tracking-[.12em] uppercase", siteBadgeClass) },
-                sr ? sr.complianceLabel : "Enter valid inputs"
+                sr ? sr.complianceLabel : t("common.noValidInputs")
               ),
               siteSvg,
               sr
@@ -4548,7 +4701,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -4558,7 +4711,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -4665,8 +4818,8 @@ if (
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Column & Beam Span Calculator",
-            hint: "Inputs",
+            title: t("tools.span.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
                 label: "Span & system",
@@ -4716,8 +4869,8 @@ if (
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "Depth, ratio, and indicative sizing",
+            title: t("common.results"),
+            hint: t("common.spanAndDepth"),
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h("div", { className: "flex flex-wrap gap-2" }, [
@@ -4780,7 +4933,7 @@ if (
                     className:
                       "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
-                  "Copy as text"
+                  t("common.copyAsText")
                 ),
                 h(
                   "button",
@@ -4790,7 +4943,7 @@ if (
                     className:
                       "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
-                  "Export PDF"
+                  t("common.exportPdf")
                 ),
               ]),
             ]),
@@ -4823,12 +4976,12 @@ if (
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Ramp Calculator",
-            hint: "Ramp Calculator",
+            title: t("tools.ramp.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Inputs",
-                hint: "Enter total height and either desired slope (%) or ramp length (m)",
+                label: t("common.inputs"),
+                hint: t("common.rampFieldHint"),
               }),
               h(Field, {
                 label: "Total height (m)",
@@ -4916,22 +5069,22 @@ if (
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-4 text-xs font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                "Logic: slope (%) = (height / length) × 100 and length = height / slope."
+                t("common.rampLogicNote")
               ),
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "Ramp geometry and comfort validation",
+            title: t("common.results"),
+            hint: t("common.geometryAndValidation"),
             tone: "results",
             children: h("div", { className: "flex flex-col gap-5" }, [
-              h("div", { className: `inline-flex self-start items-center h-9 px-4 rounded-full border text-[11px] font-extrabold tracking-[.18em] uppercase ${statusClass}` }, rampResult ? rampResult.status : "Awaiting input"),
+              h("div", { className: `inline-flex self-start items-center h-9 px-4 rounded-full border text-[11px] font-extrabold tracking-[.18em] uppercase ${statusClass}` }, rampResult ? rampResult.status : t("common.awaitingRampStatus")),
               h("div", { className: "border border-[var(--st-border)] rounded-2xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-4" }, [
-                h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-2" }, "Slope quality"),
+                h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-2" }, t("common.slopeQuality")),
                 h("div", { className: "h-2 rounded-full bg-[var(--st-border)] overflow-hidden" }, [
                   h("div", { className: `h-full rounded-full transition-all duration-200 ${meterWidth} ${meterTone}` }),
                 ]),
-                h("div", { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : "Enter height and slope or length"),
+                h("div", { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : t("common.awaitingRampInput")),
               ]),
               h(ValueBlock, {
                 label: "Calculated slope",
@@ -4968,12 +5121,12 @@ if (
       if (activeTool === "stair") {
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
           h(Card, {
-            title: "Stair Calculator",
-            hint: "Stair Calculator",
+            title: t("tools.stair.label"),
+            hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Inputs",
-                hint: "Set floor height and target riser to estimate step geometry",
+                label: t("common.inputs"),
+                hint: t("common.stairFieldHint"),
               }),
               h(Field, {
                 label: "Total height (m)",
@@ -5003,19 +5156,19 @@ if (
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-4 text-xs font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                "Rule used: 2 × riser + tread ≈ 63 cm"
+                t("common.stairRuleShort")
               ),
             ]),
           }),
           h(Card, {
-            title: "Results",
-            hint: "Calculated stair proportions",
+            title: t("common.results"),
+            hint: t("common.stairGeometry"),
             tone: "results",
             children: h("div", { className: "flex flex-col gap-4" }, [
               h(ValueBlock, {
                 label: "Number of steps",
                 valueText: stairResult ? formatSmartNumber(stairResult.steps) : "—",
-                unitText: "steps",
+                unitText: t("common.stepsUnit"),
                 big: true,
               }),
               h(ValueBlock, {
@@ -5051,8 +5204,19 @@ if (
       }
 
       return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
-        h(Card, { title: "Inputs", hint: tab === "paper" ? "Paper size mode" : tab === "reverse" ? "Model → real mode" : "Real → model mode", children: h(InputsPanel, {}) }),
-        h(Card, { title: "Results", hint: "Instant outputs (with copy + history)", right: null, tone: "results", children: [h(ResultHeader, {}), h(ResultsPanel, {})] }),
+        h(Card, {
+          title: t("common.inputs"),
+          hint:
+            tab === "paper" ? t("common.paperSizeMode") : tab === "reverse" ? t("common.modelToRealMode") : t("common.realToModelMode"),
+          children: h(InputsPanel, {}),
+        }),
+        h(Card, {
+          title: t("common.results"),
+          hint: t("common.instantOutputsHint"),
+          right: null,
+          tone: "results",
+          children: [h(ResultHeader, {}), h(ResultsPanel, {})],
+        }),
       ]);
     }
 
@@ -5075,9 +5239,9 @@ if (
       return acc;
     }, {});
     const landingToolsList = LANDING_TOOL_ORDER.map((tid) => {
-      const tool = TOOL_ITEMS.find((t) => t.id === tid);
+      const tool = TOOL_ITEMS.find((x) => x.id === tid);
       if (!tool) return null;
-      return { tool, category: LANDING_CATEGORY_BY_ID[tid] || "geometry" };
+      return { tool: mergeToolMeta(tool), category: LANDING_CATEGORY_BY_ID[tid] || "geometry" };
     }).filter(Boolean);
 
     if (activeTool === "landing") {
@@ -5085,7 +5249,7 @@ if (
         h("div", { className: "structura-hero-shell" }, [
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
           h("div", { className: "relative z-10 max-w-6xl mx-auto w-full px-4" }, [
-            h("header", { className: "pt-6 flex justify-end" }, h(ThemeToggleButton, { theme, setTheme })),
+            h("header", { className: "pt-6 flex justify-end" }, h(NavToggles, { theme, setTheme })),
             h("section", { className: "pt-4 pb-10 md:pt-10 md:pb-14" }, [
               h(
                 "h1",
@@ -5100,7 +5264,7 @@ if (
                 {
                   className: "structura-hero-line structura-hero-line--2 mt-5 text-lg md:text-xl text-[var(--st-muted)] font-medium max-w-2xl leading-snug",
                 },
-                STRUCTURA_TAGLINE
+                t("landing.tagline")
               ),
               h(
                 "button",
@@ -5110,7 +5274,7 @@ if (
                     "structura-hero-line structura-hero-line--4 mt-10 h-14 px-8 rounded-2xl bg-[var(--st-accent)] text-white font-semibold text-[15px] tracking-wide hover:brightness-110 transition-all duration-150",
                   onClick: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
                 },
-                "Open Toolkit"
+                t("landing.openToolkit")
               ),
             ]),
           ]),
@@ -5123,7 +5287,7 @@ if (
             className: "max-w-6xl mx-auto w-full px-4 py-14 md:py-20 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
           },
           [
-            h("h2", { id: "structura-about-heading", className: "sr-only" }, "About Structura"),
+            h("h2", { id: "structura-about-heading", className: "sr-only" }, t("landing.aboutSr")),
             h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-14" }, [
               h(
                 "div",
@@ -5132,12 +5296,12 @@ if (
                   className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
                 },
                 [
-                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "01"),
-                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "Built for the field"),
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col1Label")),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col1Title")),
                   h(
                     "p",
                     { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
-                    "Architects and engineers spend too much time on repetitive calculations. Structura brings the most-used design checks into one clean, fast interface — no login, no setup, no noise."
+                    t("landing.about.col1Body")
                   ),
                 ]
               ),
@@ -5148,12 +5312,12 @@ if (
                   className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
                 },
                 [
-                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "02"),
-                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "10 professional tools"),
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col2Label")),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col2Title")),
                   h(
                     "p",
                     { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
-                    "From scale conversions and stair geometry to fire escape compliance and thermal performance — every tool is built around real project workflows."
+                    t("landing.about.col2Body")
                   ),
                 ]
               ),
@@ -5164,12 +5328,12 @@ if (
                   className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
                 },
                 [
-                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "03"),
-                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "Students to seniors"),
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col3Label")),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col3Title")),
                   h(
                     "p",
                     { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
-                    "Whether you're a first-year architecture student or a licensed engineer, Structura gives you instant answers to the questions you face every day on site and in studio."
+                    t("landing.about.col3Body")
                   ),
                 ]
               ),
@@ -5177,7 +5341,7 @@ if (
           ]
         ),
         h("section", { id: "structura-tool-grid", className: "max-w-6xl mx-auto w-full px-4 pb-16 md:pb-24" }, [
-          h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, "All Tools"),
+          h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, t("landing.allTools")),
           h(
             "div",
             { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" },
@@ -5210,13 +5374,13 @@ if (
           ),
         ]),
         h("footer", { className: "mt-auto pt-10 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
-          h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, "Designed & developed by Melih Özdemir"),
+          h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
           h(
             "div",
             { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-xl mx-auto leading-relaxed opacity-95" },
-            "© 2025 Structura. Designed & developed by Melih Özdemir. All rights reserved."
+            t("footer.rights")
           ),
-          h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, "Structura — 2025"),
+          h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, t("footer.yearLine")),
         ]),
       ]);
     }
@@ -5247,10 +5411,10 @@ if (
                 h(
                   "div",
                   { className: "mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)]" },
-                  STRUCTURA_TAGLINE
+                  t("landing.tagline")
                 ),
               ]),
-              h(ThemeToggleButton, { theme, setTheme }),
+              h(NavToggles, { theme, setTheme }),
             ]),
             h("p", { className: "mt-5 max-w-3xl text-[15px] text-[var(--st-muted)] font-medium leading-relaxed" }, activeToolMeta.intro),
           ]),
@@ -5260,7 +5424,7 @@ if (
               "aside",
               { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)] p-4 lg:sticky lg:top-6" },
               [
-                h("div", { className: "text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3 px-2" }, "Tools"),
+                h("div", { className: "text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3 px-2" }, t("nav.tools")),
                 h(
                   "div",
                   { className: "flex flex-col gap-5" },
@@ -5275,8 +5439,9 @@ if (
                         "nav",
                         { className: "flex flex-col gap-2" },
                         group.toolIds.map((tid) => {
-                          const tool = TOOL_ITEMS.find((t) => t.id === tid);
-                          if (!tool) return null;
+                          const baseTool = TOOL_ITEMS.find((x) => x.id === tid);
+                          if (!baseTool) return null;
+                          const tool = mergeToolMeta(baseTool);
                           return h(
                             "button",
                             {
@@ -5322,8 +5487,8 @@ if (
             ? h("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4" }, [
                 h("div", { className: "absolute inset-0 bg-black/40 dark:bg-black/50", onClick: () => setPdfModalOpen(false) }),
                 h("div", { className: "relative w-full max-w-md rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] p-5" }, [
-                  h("div", { className: "text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3" }, "Export as PDF"),
-                  h("div", { className: "text-sm text-[var(--st-fg)] font-semibold" }, "Project name (optional)"),
+                  h("div", { className: "text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3" }, t("common.exportAsPdf")),
+                  h("div", { className: "text-sm text-[var(--st-fg)] font-semibold" }, t("common.projectNameOptional")),
                   h("input", {
                     value: pdfProjectName,
                     onChange: (e) => setPdfProjectName(e.target.value),
@@ -5340,7 +5505,7 @@ if (
                         className:
                           "flex-1 h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                       },
-                      "Cancel"
+                      t("common.cancel")
                     ),
                     h(
                       "button",
@@ -5350,27 +5515,27 @@ if (
                         className:
                           "flex-1 h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                       },
-                      "Export PDF"
+                      t("common.exportPdf")
                     ),
                   ]),
                   h(
                     "div",
                     { className: "mt-3 text-xs text-[var(--st-muted)]" },
                     activeTool === "span"
-                      ? "PDF includes values and a schematic cross-section diagram."
+                      ? t("pdf.spanCross")
                       : activeTool === "room"
-                        ? "PDF includes the room table, total area, and timestamp."
+                        ? t("pdf.roomTable")
                         : activeTool === "parking"
-                          ? "PDF includes all values and a schematic top-view diagram."
+                          ? t("pdf.parkingTop")
                           : activeTool === "daylight"
-                            ? "PDF includes EN 17037 / IES reference notes, values, and a daylight penetration diagram."
+                            ? t("pdf.daylight")
                             : activeTool === "fireEscape"
-                              ? "PDF includes all values and a schematic floor plan with travel path."
+                              ? t("pdf.firePlan")
                               : activeTool === "uValue"
-                                ? "PDF includes layer build-up, U/R values, and a schematic layer diagram."
+                                ? t("pdf.uValueLayers")
                                 : activeTool === "siteCoverage"
-                                  ? "PDF includes SCR/FAR results, validation notes, and a schematic site plan diagram."
-                                  : "PDF is generated as a clean single-page layout."
+                                  ? t("pdf.sitePlan")
+                                  : t("pdf.default")
                   ),
                 ]),
               ])
@@ -5378,13 +5543,13 @@ if (
         ]
       ),
       h("footer", { className: "mt-auto pt-12 pb-6 text-center px-4 border-t border-[var(--st-border)]" }, [
-        h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, "Designed & developed by Melih Özdemir"),
+        h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
         h(
           "div",
           { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-2xl mx-auto leading-relaxed" },
-          "© 2025 Structura. Designed & developed by Melih Özdemir. All rights reserved."
+          t("footer.rights")
         ),
-        h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, "Structura — 2025"),
+        h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, t("footer.yearLine")),
       ]),
     ]);
   }
@@ -5394,7 +5559,7 @@ if (
     return h("div", { className: "min-h-screen" }, null);
   }
 
-  ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+  ReactDOM.createRoot(document.getElementById("root")).render(h(LanguageProvider, null, h(App)));
 } else {
   const $ = (id) => document.getElementById(id);
 
