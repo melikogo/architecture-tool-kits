@@ -59,6 +59,57 @@ if (
   const FIRE_AREA_TWO_EXIT_M2 = 185;
   const FIRE_EXIT_WIDTH_M = 0.91;
 
+  const U_VALUE_RSI = 0.13;
+  const U_VALUE_RSO = 0.04;
+
+  const U_VALUE_MATERIALS = [
+    { id: "concrete", label: "Concrete", lambda: 1.75, fixedR: null },
+    { id: "brick", label: "Brick", lambda: 0.77, fixedR: null },
+    { id: "eps", label: "EPS Insulation", lambda: 0.036, fixedR: null },
+    { id: "xps", label: "XPS Insulation", lambda: 0.03, fixedR: null },
+    { id: "mineral", label: "Mineral Wool", lambda: 0.034, fixedR: null },
+    { id: "plasterboard", label: "Plasterboard", lambda: 0.25, fixedR: null },
+    { id: "timber", label: "Timber", lambda: 0.13, fixedR: null },
+    { id: "glass", label: "Glass", lambda: 1.0, fixedR: null },
+    { id: "airgap", label: "Air Gap", lambda: null, fixedR: 0.18 },
+    { id: "render", label: "Render/Plaster", lambda: 0.57, fixedR: null },
+  ];
+
+  const U_VALUE_CLIMATES = [
+    { id: "A", label: "Very Cold (Zone A)" },
+    { id: "B", label: "Cold (Zone B)" },
+    { id: "C", label: "Temperate (Zone C)" },
+    { id: "D", label: "Warm (Zone D)" },
+  ];
+
+  const U_VALUE_CONSTRUCTION_TYPES = [
+    { id: "external_wall", label: "External Wall" },
+    { id: "roof", label: "Roof" },
+    { id: "floor", label: "Floor" },
+    { id: "window", label: "Window/Glazing" },
+  ];
+
+  /** Indicative max U (W/m²K) — ASHRAE 90.1 / EU EPBD style; window row typical EPBD glazing */
+  const U_VALUE_THRESHOLDS = {
+    external_wall: { A: 0.2, B: 0.25, C: 0.35, D: 0.45 },
+    roof: { A: 0.15, B: 0.2, C: 0.25, D: 0.35 },
+    floor: { A: 0.25, B: 0.3, C: 0.4, D: 0.5 },
+    window: { A: 1.0, B: 1.2, C: 1.5, D: 1.8 },
+  };
+
+  const U_LAYER_SVG_COLORS = {
+    concrete: "#94a3b8",
+    brick: "#c2410c",
+    eps: "#fcd34d",
+    xps: "#fde68a",
+    mineral: "#a5b4fc",
+    plasterboard: "#e7e5e4",
+    timber: "#d6a463",
+    glass: "#7dd3fc",
+    airgap: "#e7e5e4",
+    render: "#d6d3d1",
+  };
+
   const ROOM_PROGRAM_TYPES = [
     { id: "bedroom", name: "Bedroom", minAreaM2: 12, minDimM: 3.0 },
     { id: "living", name: "Living Room", minAreaM2: 20, minDimM: 3.3 },
@@ -135,6 +186,11 @@ if (
     if (n == null || !Number.isFinite(n)) return "—";
     const rounded = Math.round(n * 10) / 10;
     return rounded.toFixed(1);
+  }
+
+  function formatUValue(n) {
+    if (n == null || !Number.isFinite(n)) return "—";
+    return (Math.round(n * 100) / 100).toFixed(2);
   }
 
   function formatFtInFromMeters(meters) {
@@ -381,6 +437,12 @@ if (
         description: "Exit distance and evacuation compliance",
         intro: "Compare travel distance and exit counts to IBC 2021 indicative limits for common occupancies.",
       },
+      {
+        id: "uValue",
+        label: "Wall U-Value Calculator",
+        description: "Thermal transmittance and insulation checker",
+        intro: "Build layer stacks, compute U-value from resistances, and check indicative ASHRAE 90.1 / EU EPBD limits by climate.",
+      },
     ];
 
     const TOOL_PATHS = {
@@ -392,6 +454,7 @@ if (
       parking: "/parking-calculator",
       daylight: "/daylight-calculator",
       fireEscape: "/fire-escape-calculator",
+      uValue: "/u-value-calculator",
     };
 
     function pathToTool(pathname) {
@@ -403,6 +466,7 @@ if (
       if (p === "/parking-calculator") return "parking";
       if (p === "/daylight-calculator") return "daylight";
       if (p === "/fire-escape-calculator") return "fireEscape";
+      if (p === "/u-value-calculator") return "uValue";
       return "scale";
     }
 
@@ -483,6 +547,12 @@ if (
     const [fireTravelM, setFireTravelM] = useState("45");
     const [fireFloors, setFireFloors] = useState("1");
     const [fireSprinkler, setFireSprinkler] = useState(true);
+
+    const [uClimateZone, setUClimateZone] = useState("C");
+    const [uConstructionType, setUConstructionType] = useState("external_wall");
+    const [uLayers, setULayers] = useState(() => [
+      { uid: "u_layer_0", materialId: "concrete", thicknessMm: "100" },
+    ]);
 
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
@@ -1027,6 +1097,97 @@ if (
       };
     }, [fireBuildingType, fireFloorM2, fireNumExits, fireTravelM, fireFloors, fireSprinkler]);
 
+    const uValueResult = useMemo(() => {
+      const getMat = (id) => U_VALUE_MATERIALS.find((m) => m.id === id) || U_VALUE_MATERIALS[0];
+      let totalThicknessMm = 0;
+      let RsumLayers = 0;
+      const layerRows = [];
+      for (let i = 0; i < uLayers.length; i++) {
+        const layer = uLayers[i];
+        const t = Number(layer.thicknessMm);
+        if (!Number.isFinite(t) || t <= 0) return null;
+        const mat = getMat(layer.materialId);
+        let rLayer;
+        if (mat.fixedR != null) {
+          rLayer = mat.fixedR;
+        } else if (mat.lambda != null && mat.lambda > 0) {
+          rLayer = (t / 1000) / mat.lambda;
+        } else {
+          return null;
+        }
+        totalThicknessMm += t;
+        RsumLayers += rLayer;
+        layerRows.push({
+          uid: layer.uid,
+          materialId: layer.materialId,
+          materialLabel: mat.label,
+          thicknessMm: t,
+          rLayer,
+        });
+      }
+      const Rtotal = U_VALUE_RSI + RsumLayers + U_VALUE_RSO;
+      if (!Number.isFinite(Rtotal) || Rtotal <= 0) return null;
+      const U = 1 / Rtotal;
+      const uRounded = Math.round(U * 100) / 100;
+      const RtotalRounded = Math.round(Rtotal * 10) / 10;
+
+      const climate = U_VALUE_CLIMATES.find((c) => c.id === uClimateZone) || U_VALUE_CLIMATES[2];
+      const constr = U_VALUE_CONSTRUCTION_TYPES.find((c) => c.id === uConstructionType) || U_VALUE_CONSTRUCTION_TYPES[0];
+      const thresholds = U_VALUE_THRESHOLDS[uConstructionType] || U_VALUE_THRESHOLDS.external_wall;
+      const uMax = thresholds[uClimateZone] ?? thresholds.C;
+
+      let complianceLevel = "green";
+      let complianceLabel = "Meets ASHRAE 90.1 / EU EPBD threshold (indicative)";
+      if (uRounded <= uMax + 1e-9) {
+        complianceLevel = "green";
+        complianceLabel = "Meets indicative threshold (U ≤ max)";
+      } else if (uRounded <= uMax * 1.15 + 1e-9) {
+        complianceLevel = "yellow";
+        complianceLabel = "Above threshold — within 15% of limit (indicative)";
+      } else {
+        complianceLevel = "red";
+        complianceLabel = "Exceeds threshold (indicative)";
+      }
+
+      const improvementWm2K = uRounded > uMax ? Math.round((uRounded - uMax) * 100) / 100 : 0;
+
+      return {
+        totalThicknessMm: Math.round(totalThicknessMm * 10) / 10,
+        U: uRounded,
+        Rtotal: RtotalRounded,
+        uMax,
+        climateLabel: climate.label,
+        constructionLabel: constr.label,
+        complianceLevel,
+        complianceLabel,
+        improvementWm2K,
+        layerRows,
+        uLayersSnapshot: uLayers.map((l) => ({ ...l })),
+      };
+    }, [uClimateZone, uConstructionType, uLayers]);
+
+    function addULayer() {
+      setULayers((prev) => {
+        if (prev.length >= 8) return prev;
+        return [
+          ...prev,
+          {
+            uid: `u_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            materialId: "eps",
+            thicknessMm: "50",
+          },
+        ];
+      });
+    }
+
+    function removeULayer(uid) {
+      setULayers((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.uid !== uid)));
+    }
+
+    function updateULayer(uid, patch) {
+      setULayers((prev) => prev.map((l) => (l.uid === uid ? { ...l, ...patch } : l)));
+    }
+
     const computed = useMemo(() => {
       if (tab === "convert") {
         return {
@@ -1261,6 +1422,33 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "uValue") {
+        if (!uValueResult) {
+          setStatus({ state: "warn", text: "Enter valid thickness (mm) for each layer." });
+          return;
+        }
+        const text = formatUValueCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "fireEscape") {
         if (!fireEscapeResult) {
           setStatus({ state: "warn", text: "Enter valid floor area, travel distance, exits, and floors." });
@@ -1638,6 +1826,36 @@ if (
       return lines.join("\n");
     }
 
+    function formatUValueCopyText() {
+      if (!uValueResult) {
+        return ["Wall U-Value Calculator", "", "Enter valid thickness (mm) for each layer."].join("\n");
+      }
+      const r = uValueResult;
+      const lines = [
+        "Wall U-Value Calculator (indicative)",
+        "",
+        `Climate zone: ${r.climateLabel}`,
+        `Construction: ${r.constructionLabel}`,
+        `Fixed surface resistances: Rsi = ${formatSmartNumber(U_VALUE_RSI)} m²K/W, Rso = ${formatSmartNumber(U_VALUE_RSO)} m²K/W`,
+        "",
+        "Layers (order as entered):",
+        ...r.layerRows.map((row, i) => `  ${i + 1}. ${row.materialLabel} — ${formatSmartNumber(row.thicknessMm)} mm (layer R ≈ ${formatSmartNumber(row.rLayer)} m²K/W)`),
+        "",
+        "Results:",
+        `- Total thickness: ${formatSmartNumber(r.totalThicknessMm)} mm`,
+        `- R-value total: ${formatSmartNumber(r.Rtotal)} m²K/W`,
+        `- U-value: ${formatUValue(r.U)} W/m²K`,
+        `- Indicative max U (ASHRAE 90.1 / EU EPBD): ${formatUValue(r.uMax)} W/m²K`,
+        `- Compliance: ${r.complianceLabel}`,
+      ];
+      if (r.improvementWm2K > 0) {
+        lines.push(`- Improvement needed: reduce U by at least ${formatUValue(r.improvementWm2K)} W/m²K to meet max U`);
+      }
+      lines.push("");
+      lines.push("Verify with national annexes and product data.");
+      return lines.join("\n");
+    }
+
     function formatRoomProgramCopyText() {
       const lines = ["Room Program", "", `Timestamp: ${new Date().toLocaleString()}`, ""];
       if (roomProgramRows.length === 0) {
@@ -1655,6 +1873,41 @@ if (
     }
 
     function buildPDFLines(projectName) {
+      if (activeTool === "uValue") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Wall U-Value Calculator (indicative)");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!uValueResult) {
+          lines.push("No valid layer inputs.");
+          return lines;
+        }
+        const r = uValueResult;
+        lines.push("Inputs");
+        lines.push(`- Climate zone: ${r.climateLabel}`);
+        lines.push(`- Construction: ${r.constructionLabel}`);
+        lines.push(`- Rsi / Rso: ${formatSmartNumber(U_VALUE_RSI)} / ${formatSmartNumber(U_VALUE_RSO)} m²K/W`);
+        lines.push("");
+        lines.push("Layers");
+        r.layerRows.forEach((row, i) => {
+          lines.push(`- ${i + 1}. ${row.materialLabel} — ${formatSmartNumber(row.thicknessMm)} mm (R ≈ ${formatSmartNumber(row.rLayer)} m²K/W)`);
+        });
+        lines.push("");
+        lines.push("Results");
+        lines.push(`- Total thickness: ${formatSmartNumber(r.totalThicknessMm)} mm`);
+        lines.push(`- R-value total: ${formatSmartNumber(r.Rtotal)} m²K/W`);
+        lines.push(`- U-value: ${formatUValue(r.U)} W/m²K`);
+        lines.push(`- Indicative max U: ${formatUValue(r.uMax)} W/m²K`);
+        lines.push(`- Compliance: ${r.complianceLabel}`);
+        if (r.improvementWm2K > 0) {
+          lines.push(`- Reduce U by at least ${formatUValue(r.improvementWm2K)} W/m²K to meet threshold`);
+        }
+        lines.push("");
+        lines.push("Standards: indicative ASHRAE 90.1 / EU EPBD thresholds by climate.");
+        return lines;
+      }
       if (activeTool === "fireEscape") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -1870,7 +2123,8 @@ if (
           activeTool === "span" ||
           activeTool === "parking" ||
           activeTool === "daylight" ||
-          activeTool === "fireEscape"
+          activeTool === "fireEscape" ||
+          activeTool === "uValue"
             ? 520
             : 780;
         lines.forEach((line) => {
@@ -2006,6 +2260,50 @@ if (
           }
         }
 
+        if (activeTool === "uValue" && uValueResult) {
+          y += 10;
+          if (y < 640) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("Layer cross-section (schematic)", marginX, y);
+            y += 14;
+            doc.setFont("helvetica", "normal");
+            const ur = uValueResult;
+            const sx = marginX;
+            const sy = y;
+            const barH = 26;
+            const totalBarW = 220;
+            const twMm = ur.layerRows.reduce((acc, row) => acc + row.thicknessMm, 0);
+            let x = sx;
+            const pdfColors = [
+              [148, 163, 184],
+              [194, 65, 12],
+              [252, 211, 77],
+              [253, 230, 138],
+              [165, 180, 252],
+              [231, 229, 228],
+              [214, 164, 99],
+              [125, 211, 252],
+              [231, 229, 228],
+              [214, 211, 209],
+            ];
+            ur.layerRows.forEach((row, idx) => {
+              const segW = twMm > 0 ? (row.thicknessMm / twMm) * totalBarW : totalBarW / ur.layerRows.length;
+              const c = pdfColors[idx % pdfColors.length];
+              doc.setFillColor(c[0], c[1], c[2]);
+              doc.setDrawColor(90);
+              doc.rect(x, sy, Math.max(segW, 4), barH, "FD");
+              doc.setFontSize(6);
+              doc.setTextColor(40);
+              doc.text(`${formatSmartNumber(row.thicknessMm)}`, x + 2, sy + barH / 2 + 2);
+              x += segW;
+            });
+            doc.setTextColor(0);
+            doc.setFontSize(8);
+            y += barH + 14;
+          }
+        }
+
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const suffix =
@@ -2019,7 +2317,9 @@ if (
                   ? "daylight-calculator"
                   : activeTool === "fireEscape"
                     ? "fire-escape-calculator"
-                    : "scale-converter";
+                    : activeTool === "uValue"
+                      ? "u-value-calculator"
+                      : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -3279,6 +3579,253 @@ if (
         ]);
       }
 
+      if (activeTool === "uValue") {
+        const ur = uValueResult;
+        const uBadgeClass =
+          ur && ur.complianceLevel === "green"
+            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            : ur && ur.complianceLevel === "yellow"
+              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              : ur
+                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
+                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+
+        const twMmSvg = ur ? ur.layerRows.reduce((a, b) => a + b.thicknessMm, 0) : 0;
+        const svgChildren = [];
+        if (ur) {
+          let cx = 24;
+          const maxBar = 268;
+          const barY = 28;
+          const barH = 34;
+          svgChildren.push(
+            h(
+              "text",
+              { x: 160, y: 18, textAnchor: "middle", className: "fill-current text-[10px] font-extrabold" },
+              "Layer build-up (inside → outside)"
+            )
+          );
+          ur.layerRows.forEach((row) => {
+            const segW = Math.max(10, twMmSvg > 0 ? (row.thicknessMm / twMmSvg) * maxBar : maxBar / ur.layerRows.length);
+            const fill = U_LAYER_SVG_COLORS[row.materialId] || "#64748b";
+            svgChildren.push(
+              h("rect", {
+                key: row.uid,
+                x: cx,
+                y: barY,
+                width: segW,
+                height: barH,
+                rx: 2,
+                fill,
+                stroke: "rgba(0,0,0,0.25)",
+                strokeWidth: 1,
+              })
+            );
+            svgChildren.push(
+              h(
+                "text",
+                {
+                  key: "t" + row.uid,
+                  x: cx + segW / 2,
+                  y: barY + barH / 2 + 4,
+                  textAnchor: "middle",
+                  className: "fill-zinc-900 dark:fill-zinc-100 text-[8px] font-extrabold",
+                  style: { textShadow: "0 0 2px rgba(255,255,255,0.8)" },
+                },
+                `${formatSmartNumber(row.thicknessMm)} mm`
+              )
+            );
+            cx += segW;
+          });
+        }
+
+        const uSvg = ur
+          ? h(
+              "svg",
+              {
+                viewBox: "0 0 320 88",
+                className:
+                  "w-full h-auto max-h-40 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-800 dark:text-zinc-100",
+                "aria-hidden": true,
+              },
+              svgChildren
+            )
+          : h(
+              "div",
+              {
+                className:
+                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+              },
+              "Enter valid layer thicknesses to preview build-up."
+            );
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Wall U-Value Calculator",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, { label: "Climate & type", hint: "Thresholds: indicative ASHRAE 90.1 / EU EPBD" }),
+              h(Field, {
+                label: "Climate zone",
+                children: h(
+                  "select",
+                  {
+                    value: uClimateZone,
+                    onChange: (e) => setUClimateZone(e.target.value),
+                    className:
+                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                  },
+                  U_VALUE_CLIMATES.map((c) => h("option", { key: c.id, value: c.id }, c.label))
+                ),
+              }),
+              h(SectionTitle, { label: "Construction", hint: "Select envelope element" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: uConstructionType === "external_wall", onClick: () => setUConstructionType("external_wall") }, "External Wall"),
+                h(ValueButton, { active: uConstructionType === "roof", onClick: () => setUConstructionType("roof") }, "Roof"),
+                h(ValueButton, { active: uConstructionType === "floor", onClick: () => setUConstructionType("floor") }, "Floor"),
+                h(ValueButton, { active: uConstructionType === "window", onClick: () => setUConstructionType("window") }, "Window/Glazing"),
+              ]),
+              h(SectionTitle, { label: "Layer builder", hint: "1–8 layers; air gap uses fixed R = 0.18 m²K/W" }),
+              ...uLayers.map((layer) =>
+                h(
+                  "div",
+                  { key: layer.uid, className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/20 p-3 space-y-3" },
+                  [
+                    h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, [
+                      h(Field, {
+                        label: "Material",
+                        children: h(
+                          "select",
+                          {
+                            value: layer.materialId,
+                            onChange: (e) => updateULayer(layer.uid, { materialId: e.target.value }),
+                            className:
+                              "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 text-zinc-900 dark:text-zinc-100 text-sm",
+                          },
+                          U_VALUE_MATERIALS.map((m) => h("option", { key: m.id, value: m.id }, m.label))
+                        ),
+                      }),
+                      h(Field, {
+                        label: "Thickness (mm)",
+                        children: h(InputBase, {
+                          value: layer.thicknessMm,
+                          onChange: (v) => updateULayer(layer.uid, { thicknessMm: v }),
+                          placeholder: "e.g., 100",
+                          type: "number",
+                          step: "any",
+                          min: 0,
+                        }),
+                      }),
+                    ]),
+                    h(
+                      "button",
+                      {
+                        type: "button",
+                        disabled: uLayers.length <= 1,
+                        onClick: () => removeULayer(layer.uid),
+                        className:
+                          "h-9 px-4 rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 text-xs font-extrabold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed",
+                      },
+                      "Remove layer"
+                    ),
+                  ]
+                )
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  disabled: uLayers.length >= 8,
+                  onClick: addULayer,
+                  className:
+                    "w-full h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                },
+                "Add layer"
+              ),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                },
+                "λ from literature; R = d/λ per layer except air gap (fixed R). U = 1/(Rsi + ΣR + Rso). Window/glazing uses indicative max U per EPBD-style table."
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Results",
+            hint: "ASHRAE 90.1 / EU EPBD (indicative)",
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h(
+                "div",
+                { className: classNames("inline-flex items-center min-h-9 px-4 py-2 rounded-full text-[10px] font-extrabold tracking-[.12em] uppercase", uBadgeClass) },
+                ur ? ur.complianceLabel : "—"
+              ),
+              uSvg,
+              ur
+                ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
+                    h(ValueBlock, {
+                      label: "Total thickness",
+                      valueText: formatSmartNumber(ur.totalThicknessMm),
+                      unitText: "mm",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "U-value",
+                      valueText: formatUValue(ur.U),
+                      unitText: "W/m²K",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "R-value total",
+                      valueText: formatSmartNumber(ur.Rtotal),
+                      unitText: "m²K/W",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "Max U (climate)",
+                      valueText: formatUValue(ur.uMax),
+                      unitText: "W/m²K",
+                      big: false,
+                    }),
+                  ])
+                : null,
+              ur && ur.improvementWm2K > 0
+                ? h("div", { className: "rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm font-semibold text-amber-950 dark:text-amber-100" }, [
+                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, "Improvement"),
+                    `Reduce U-value by at least ${formatUValue(ur.improvementWm2K)} W/m²K to meet indicative max U (${formatUValue(ur.uMax)} W/m²K).`,
+                  ])
+                : null,
+              ur
+                ? h("div", { className: "text-[11px] font-semibold text-zinc-500 dark:text-zinc-400" }, "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.")
+                : null,
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       if (activeTool === "span") {
         const SPAN_SYSTEM_OPTIONS = [
           { value: "rc_flat", label: "Reinforced Concrete Flat Slab" },
@@ -3900,7 +4447,9 @@ if (
                             ? "PDF includes EN 17037 / IES reference notes, values, and a daylight penetration diagram."
                             : activeTool === "fireEscape"
                               ? "PDF includes all values and a schematic floor plan with travel path."
-                              : "PDF is generated as a clean single-page layout."
+                              : activeTool === "uValue"
+                                ? "PDF includes layer build-up, U/R values, and a schematic layer diagram."
+                                : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
