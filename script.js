@@ -16,6 +16,19 @@ if (
     A4: { wMm: 210, hMm: 297 },
   };
 
+  const PARKING_LAYOUTS = {
+    parallel: { key: "parallel", spaceW: 2.2, spaceD: 6.0, aisleM: 4.0, label: "Parallel" },
+    perpendicular: { key: "perpendicular", spaceW: 2.5, spaceD: 5.0, aisleM: 6.0, label: "Perpendicular (90°)" },
+    angled: { key: "angled", spaceW: 2.5, spaceD: 5.0, aisleM: 4.5, label: "Angled (45°)" },
+  };
+
+  const PARKING_USAGE = {
+    residential: { key: "residential", label: "Residential", mult: 1.0 },
+    office: { key: "office", label: "Office / Commercial", mult: 1.05 },
+    hospital: { key: "hospital", label: "Hospital", mult: 1.12 },
+    mall: { key: "mall", label: "Shopping Mall", mult: 1.08 },
+  };
+
   const ROOM_PROGRAM_TYPES = [
     { id: "bedroom", name: "Bedroom", minAreaM2: 12, minDimM: 3.0 },
     { id: "living", name: "Living Room", minAreaM2: 20, minDimM: 3.3 },
@@ -320,6 +333,12 @@ if (
         description: "Room schedule and area program builder",
         intro: "Build a room schedule from typologies, compare guideline minimums to your areas, and export CSV or PDF.",
       },
+      {
+        id: "parking",
+        label: "Parking Calculator",
+        description: "Vehicle capacity and layout estimator",
+        intro: "Estimate stall counts, aisle widths, and layout efficiency from total parking area and typical module dimensions.",
+      },
     ];
 
     const TOOL_PATHS = {
@@ -328,6 +347,7 @@ if (
       ramp: "/ramp-calculator",
       span: "/span-calculator",
       room: "/room-program",
+      parking: "/parking-calculator",
     };
 
     function pathToTool(pathname) {
@@ -336,6 +356,7 @@ if (
       if (p === "/stair-calculator") return "stair";
       if (p === "/ramp-calculator") return "ramp";
       if (p === "/room-program") return "room";
+      if (p === "/parking-calculator") return "parking";
       return "scale";
     }
 
@@ -399,6 +420,10 @@ if (
     const [roomProgramTypeId, setRoomProgramTypeId] = useState("bedroom");
     const [roomProgramAreaStr, setRoomProgramAreaStr] = useState("12.0");
     const [roomProgramRows, setRoomProgramRows] = useState([]);
+
+    const [parkingAreaM2, setParkingAreaM2] = useState("1000");
+    const [parkingLayout, setParkingLayout] = useState("perpendicular");
+    const [parkingUsage, setParkingUsage] = useState("office");
 
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
@@ -732,6 +757,55 @@ if (
       };
     }, [spanLengthM, spanSystem, spanLoad]);
 
+    const parkingResult = useMemo(() => {
+      const totalArea = Number(parkingAreaM2);
+      if (!Number.isFinite(totalArea) || totalArea <= 0) return null;
+
+      const layout = PARKING_LAYOUTS[parkingLayout] || PARKING_LAYOUTS.perpendicular;
+      const usage = PARKING_USAGE[parkingUsage] || PARKING_USAGE.office;
+
+      const stallArea = layout.spaceW * layout.spaceD;
+      let grossPerStallRaw;
+      if (parkingLayout === "parallel") {
+        grossPerStallRaw = ((layout.spaceW * 2 + layout.aisleM) * layout.spaceD) / 2;
+      } else {
+        grossPerStallRaw = ((layout.spaceD * 2 + layout.aisleM) * layout.spaceW) / 2;
+      }
+      const grossPerStall = grossPerStallRaw * usage.mult;
+
+      const spaces = Math.max(0, Math.floor(totalArea / grossPerStall));
+      const efficiencyRaw = spaces > 0 ? (spaces * stallArea) / totalArea : 0;
+      const efficiencyPct = Math.round(efficiencyRaw * 1000) / 10;
+
+      let effLevel = "efficient";
+      let effLabel = "Efficient layout";
+      if (efficiencyPct < 50) {
+        effLevel = "poor";
+        effLabel = "Poor layout";
+      } else if (efficiencyPct < 65) {
+        effLevel = "acceptable";
+        effLabel = "Acceptable layout";
+      }
+
+      const rampRequired = totalArea > 500;
+
+      return {
+        totalAreaM2: totalArea,
+        spaces,
+        aisleM: layout.aisleM,
+        spaceDimW: layout.spaceW,
+        spaceDimD: layout.spaceD,
+        grossPerStall,
+        efficiencyPct,
+        effLevel,
+        effLabel,
+        rampRequired,
+        layoutLabel: layout.label,
+        usageLabel: usage.label,
+        stallArea,
+      };
+    }, [parkingAreaM2, parkingLayout, parkingUsage]);
+
     const computed = useMemo(() => {
       if (tab === "convert") {
         return {
@@ -966,6 +1040,33 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "parking") {
+        if (!parkingResult) {
+          setStatus({ state: "warn", text: "Enter a valid total parking area (m²)." });
+          return;
+        }
+        const text = formatParkingCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "room") {
         const text = formatRoomProgramCopyText();
         const ok = await copyText(text);
@@ -1180,6 +1281,28 @@ if (
       setStatus({ state: "ok", text: "CSV exported." });
     }
 
+    function formatParkingCopyText() {
+      if (!parkingResult) {
+        return ["Parking Calculator", "", "Enter a valid total parking area (m²)."].join("\n");
+      }
+      const r = parkingResult;
+      return [
+        "Parking Calculator",
+        "",
+        `Total parking area: ${formatSmartNumber(r.totalAreaM2)} m²`,
+        `Layout: ${r.layoutLabel}`,
+        `Usage: ${r.usageLabel}`,
+        "",
+        "Results:",
+        `- Parking spaces: ${r.spaces}`,
+        `- Required aisle width: ${formatSmartNumber(r.aisleM)} m`,
+        `- Single space: ${formatSmartNumber(r.spaceDimW)} × ${formatSmartNumber(r.spaceDimD)} m`,
+        `- Ramp required: ${r.rampRequired ? "Yes" : "No"}`,
+        `- Efficiency: ${formatSmartNumber(r.efficiencyPct)} %`,
+        `- Assessment: ${r.effLabel}`,
+      ].join("\n");
+    }
+
     function formatRoomProgramCopyText() {
       const lines = ["Room Program", "", `Timestamp: ${new Date().toLocaleString()}`, ""];
       if (roomProgramRows.length === 0) {
@@ -1197,6 +1320,32 @@ if (
     }
 
     function buildPDFLines(projectName) {
+      if (activeTool === "parking") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Parking Calculator");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!parkingResult) {
+          lines.push("No valid parking area entered.");
+          return lines;
+        }
+        const r = parkingResult;
+        lines.push("Inputs");
+        lines.push(`- Total parking area: ${formatSmartNumber(r.totalAreaM2)} m²`);
+        lines.push(`- Layout: ${r.layoutLabel}`);
+        lines.push(`- Usage: ${r.usageLabel}`);
+        lines.push("");
+        lines.push("Results");
+        lines.push(`- Parking spaces: ${r.spaces}`);
+        lines.push(`- Required aisle width: ${formatSmartNumber(r.aisleM)} m`);
+        lines.push(`- Single space: ${formatSmartNumber(r.spaceDimW)} × ${formatSmartNumber(r.spaceDimD)} m`);
+        lines.push(`- Ramp required: ${r.rampRequired ? "Yes" : "No"}`);
+        lines.push(`- Efficiency: ${formatSmartNumber(r.efficiencyPct)} %`);
+        lines.push(`- Assessment: ${r.effLabel}`);
+        return lines;
+      }
       if (activeTool === "room") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -1307,7 +1456,7 @@ if (
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(12);
-        const yMax = activeTool === "span" ? 520 : 780;
+        const yMax = activeTool === "span" || activeTool === "parking" ? 520 : 780;
         lines.forEach((line) => {
           if (y > yMax) return;
           const chunks = doc.splitTextToSize(line, maxWidth);
@@ -1350,10 +1499,44 @@ if (
           }
         }
 
+        if (activeTool === "parking" && parkingResult) {
+          y += 10;
+          if (y < 680) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("Top view (schematic)", marginX, y);
+            y += 14;
+            doc.setFont("helvetica", "normal");
+            const sx = marginX;
+            const sy = y;
+            const w = 220;
+            doc.setDrawColor(100);
+            doc.setFillColor(210, 210, 218);
+            doc.rect(sx, sy, w, 20, "F");
+            doc.setFillColor(230, 230, 235);
+            doc.rect(sx, sy + 20, w, 14, "F");
+            doc.setFillColor(210, 210, 218);
+            doc.rect(sx, sy + 34, w, 20, "F");
+            doc.setFontSize(7);
+            doc.setTextColor(55);
+            doc.text("Parking stalls", sx + 6, sy + 13);
+            doc.text(`Central aisle ${formatSmartNumber(parkingResult.aisleM)} m`, sx + 6, sy + 29);
+            doc.text("Parking stalls", sx + 6, sy + 47);
+            doc.setTextColor(0);
+            y += 62;
+          }
+        }
+
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const suffix =
-          activeTool === "span" ? "span-calculator" : activeTool === "room" ? "room-program" : "scale-converter";
+          activeTool === "span"
+            ? "span-calculator"
+            : activeTool === "room"
+              ? "room-program"
+              : activeTool === "parking"
+                ? "parking-calculator"
+                : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -1926,6 +2109,197 @@ if (
                     onClick: () => setPdfModalOpen(true),
                     className:
                       "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
+      if (activeTool === "parking") {
+        const pr = parkingResult;
+        const effBadgeClass =
+          pr && pr.effLevel === "efficient"
+            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            : pr && pr.effLevel === "acceptable"
+              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              : pr
+                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
+                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+
+        const layoutSvg = pr
+          ? h(
+              "svg",
+              {
+                viewBox: "0 0 320 140",
+                className:
+                  "w-full h-auto max-h-52 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                "aria-hidden": true,
+              },
+              [
+                [0, 1, 2, 3].map((i) =>
+                  h("rect", {
+                    key: "ts" + i,
+                    x: 20 + i * 70,
+                    y: 16,
+                    width: 60,
+                    height: 34,
+                    rx: 2,
+                    className: "fill-zinc-200 dark:fill-zinc-800 stroke-zinc-400 dark:stroke-zinc-500",
+                    strokeWidth: 1,
+                  })
+                ),
+                h("rect", {
+                  x: 20,
+                  y: 56,
+                  width: 280,
+                  height: 24,
+                  rx: 2,
+                  className: "fill-zinc-300/90 dark:fill-zinc-600/80 stroke-zinc-500 dark:stroke-zinc-400",
+                  strokeWidth: 1,
+                }),
+                h(
+                  "text",
+                  {
+                    x: 160,
+                    y: 72,
+                    textAnchor: "middle",
+                    className: "fill-current text-[9px] font-extrabold",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  `Aisle ${formatSmartNumber(pr.aisleM)} m`
+                ),
+                [0, 1, 2, 3].map((i) =>
+                  h("rect", {
+                    key: "bs" + i,
+                    x: 20 + i * 70,
+                    y: 86,
+                    width: 60,
+                    height: 34,
+                    rx: 2,
+                    className: "fill-zinc-200 dark:fill-zinc-800 stroke-zinc-400 dark:stroke-zinc-500",
+                    strokeWidth: 1,
+                  })
+                ),
+              ]
+            )
+          : h(
+              "div",
+              {
+                className:
+                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+              },
+              "Enter a valid parking area to preview the layout."
+            );
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Parking Calculator",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: "Parking area",
+                hint: "Gross floor area allocated to parking",
+              }),
+              h(Field, {
+                label: "Total parking area (m²)",
+                children: h(InputBase, {
+                  value: parkingAreaM2,
+                  onChange: setParkingAreaM2,
+                  placeholder: "e.g., 1000",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(SectionTitle, { label: "Parking type", hint: "Standard stall and aisle module" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: parkingLayout === "parallel", onClick: () => setParkingLayout("parallel") }, "Parallel"),
+                h(ValueButton, { active: parkingLayout === "perpendicular", onClick: () => setParkingLayout("perpendicular") }, "Perpendicular (90°)"),
+                h(ValueButton, { active: parkingLayout === "angled", onClick: () => setParkingLayout("angled") }, "Angled (45°)"),
+              ]),
+              h(SectionTitle, { label: "Usage type", hint: "Adjusts circulation / module factor" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: parkingUsage === "residential", onClick: () => setParkingUsage("residential") }, "Residential"),
+                h(ValueButton, { active: parkingUsage === "office", onClick: () => setParkingUsage("office") }, "Office / Commercial"),
+                h(ValueButton, { active: parkingUsage === "hospital", onClick: () => setParkingUsage("hospital") }, "Hospital"),
+                h(ValueButton, { active: parkingUsage === "mall", onClick: () => setParkingUsage("mall") }, "Shopping Mall"),
+              ]),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                },
+                "Modules use double-loaded aisles: parallel stalls 2.2×6 m; perpendicular & angled stalls 2.5×5 m with aisles as listed."
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Results",
+            hint: "Capacity and efficiency",
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h(
+                "div",
+                { className: classNames("inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase", effBadgeClass) },
+                pr ? pr.effLabel : "—"
+              ),
+              layoutSvg,
+              pr
+                ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
+                    h(ValueBlock, {
+                      label: "Parking spaces",
+                      valueText: String(pr.spaces),
+                      unitText: "spaces",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Required aisle width",
+                      valueText: formatSmartNumber(pr.aisleM),
+                      unitText: "m",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Single space (W × D)",
+                      valueText: `${formatSmartNumber(pr.spaceDimW)} × ${formatSmartNumber(pr.spaceDimD)}`,
+                      unitText: "m",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "Efficiency",
+                      valueText: formatSmartNumber(pr.efficiencyPct),
+                      unitText: "%",
+                      big: false,
+                    }),
+                  ])
+                : null,
+              pr
+                ? h("div", { className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
+                    h("span", { className: "text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Ramp required"),
+                    pr.rampRequired ? "Yes (area > 500 m²)" : "No",
+                  ])
+                : null,
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors sm:col-span-1",
                   },
                   "Export PDF"
                 ),
@@ -2550,7 +2924,9 @@ if (
                       ? "PDF includes values and a schematic cross-section diagram."
                       : activeTool === "room"
                         ? "PDF includes the room table, total area, and timestamp."
-                        : "PDF is generated as a clean single-page layout."
+                        : activeTool === "parking"
+                          ? "PDF includes all values and a schematic top-view diagram."
+                          : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
