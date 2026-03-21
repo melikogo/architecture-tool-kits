@@ -3,11 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Architecture Toolkit</title>
+    <meta name="description" content="Free calculators for scale, stairs, ramps, daylight, fire escape and more." />
+    <meta name="author" content="Melih Özdemir" />
+    <meta property="og:title" content="Structura — Professional Tools for Architects" />
+    <meta property="og:description" content="Free calculators for scale, stairs, ramps, daylight, fire escape and more." />
+    <meta property="og:url" content="https://architecture-tool-kits.vercel.app" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <title>Structura — Professional tools for architects and engineers</title>
     <script>
       (function () {
         try {
-          var t = localStorage.getItem("arch-theme");
+          var t = localStorage.getItem("structura-theme");
+          if (t == null) t = localStorage.getItem("arch-theme");
           if (t === "dark") {
             document.documentElement.classList.add("dark");
           } else if (t === "light") {
@@ -21,7 +29,17 @@
 
     <!-- Tailwind (no build step) -->
     <script>
-      tailwind.config = { darkMode: "class" };
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+              display: ["Syne", "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -34,9 +52,8 @@
 
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body class="antialiased bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 theme-transition">
+  <body class="antialiased font-sans theme-transition-body bg-[var(--st-bg)] text-[var(--st-fg)]">
     <div id="root"></div>
     <script src="./script.js"></script>
   </body>
 </html>
-

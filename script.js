@@ -188,6 +188,107 @@ if (
     return rounded.toFixed(1);
   }
 
+  const STRUCTURA_TAGLINE = "Professional tools for architects and engineers";
+
+  function AnimatedNumberText({ valueText, className }) {
+    const [display, setDisplay] = useState(valueText);
+    useEffect(() => {
+      if (!valueText || valueText === "—") {
+        setDisplay(valueText);
+        return;
+      }
+      if (/[×x]/.test(String(valueText))) {
+        setDisplay(valueText);
+        return;
+      }
+      const num = parseFloat(String(valueText).replace(/[^\d.\-eE]/g, ""));
+      if (!Number.isFinite(num)) {
+        setDisplay(valueText);
+        return;
+      }
+      let raf = 0;
+      const start = performance.now();
+      const dur = 300;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - (1 - t) * (1 - t);
+        setDisplay(formatSmartNumber(num * eased));
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else setDisplay(formatSmartNumber(num));
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [valueText]);
+    return h("div", { className }, display);
+  }
+
+  function ThemeToggleButton({ theme, setTheme }) {
+    return h(
+      "button",
+      {
+        type: "button",
+        onClick: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+        className:
+          "w-10 h-10 rounded-full border border-[var(--st-border)] bg-[var(--st-bg)] flex items-center justify-center hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150 text-[var(--st-fg)]",
+        "aria-label": "Toggle dark mode",
+      },
+      theme === "dark"
+        ? h(
+            "svg",
+            { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
+            h("path", {
+              d: "M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z",
+              stroke: "currentColor",
+              strokeWidth: "2",
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+            })
+          )
+        : h(
+            "svg",
+            { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
+            h("path", { d: "M12 2v2", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M12 20v2", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M4.93 4.93l1.41 1.41", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M17.66 17.66l1.41 1.41", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M2 12h2", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M20 12h2", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M4.93 19.07l1.41-1.41", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("path", { d: "M17.66 6.34l1.41-1.41", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }),
+            h("circle", { cx: "12", cy: "12", r: "4", stroke: "currentColor", strokeWidth: "2" })
+          )
+    );
+  }
+
+  function LandingToolIcon({ toolId }) {
+    const c = { width: 28, height: 28, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "text-[var(--st-accent)]" };
+    const stroke = { stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" };
+    switch (toolId) {
+      case "scale":
+        return h("svg", c, h("path", { ...stroke, d: "M4 12h16M12 4v16M6 6l12 12" }));
+      case "stair":
+        return h("svg", c, h("path", { ...stroke, d: "M4 20h4v-4h4v-4h4V8h4" }));
+      case "ramp":
+        return h("svg", c, h("path", { ...stroke, d: "M4 16L20 8M4 20h16" }));
+      case "span":
+        return h("svg", c, h("path", { ...stroke, d: "M4 18h16M8 18V10M16 18V10" }));
+      case "siteCoverage":
+        return h("svg", c, h("rect", { ...stroke, x: "3", y: "5", width: "18", height: "14", rx: "1" }), h("rect", { ...stroke, x: "8", y: "9", width: "8", height: "6", rx: "0.5" }));
+      case "parking":
+        return h("svg", c, h("path", { ...stroke, d: "M6 18V8h6l2 4H6M6 14h8" }));
+      case "room":
+        return h("svg", c, h("rect", { ...stroke, x: "4", y: "4", width: "7", height: "7" }), h("rect", { ...stroke, x: "13", y: "4", width: "7", height: "7" }), h("rect", { ...stroke, x: "4", y: "13", width: "7", height: "7" }));
+      case "fireEscape":
+        return h("svg", c, h("path", { ...stroke, d: "M12 3v18M8 7h8M8 12h8M8 17h8" }));
+      case "daylight":
+        return h("svg", c, h("circle", { ...stroke, cx: "12", cy: "12", r: "4" }), h("path", { ...stroke, d: "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41" }));
+      case "uValue":
+        return h("svg", c, h("path", { ...stroke, d: "M4 8h16v8H4zM8 8V6M12 8V5M16 8V6" }));
+      default:
+        return h("svg", c, h("circle", { ...stroke, cx: "12", cy: "12", r: "8" }));
+    }
+  }
+
   function formatUValue(n) {
     if (n == null || !Number.isFinite(n)) return "—";
     return (Math.round(n * 100) / 100).toFixed(2);
@@ -254,23 +355,22 @@ if (
   function Card({ title, hint, children, right, tone }) {
     const cardTone =
       tone === "results"
-        ? "bg-zinc-50/80 dark:bg-zinc-900/40 border-zinc-300 dark:border-zinc-700 shadow-[0_10px_30px_rgba(0,0,0,0.09)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-[0_6px_22px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_22px_rgba(0,0,0,0.35)]";
+        ? "bg-[var(--st-bg)] border-[var(--st-border)]"
+        : "bg-[var(--st-bg)] border-[var(--st-border)]";
     return h(
       "section",
       {
-        className:
-          `border rounded-3xl p-6 text-zinc-900 dark:text-zinc-100 ${cardTone}`,
+        className: `border rounded-3xl p-6 text-[var(--st-fg)] ${cardTone}`,
       },
       [
         title
           ? h("div", { key: "head", className: "flex items-start justify-between gap-3 mb-4" }, [
               h("div", { key: "th" }, [
-              h("div", { key: "ey", className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400" }, title),
+                h("div", { key: "ey", className: "text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, title),
                 hint
                   ? h(
                       "div",
-                      { key: "hi", className: "mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-semibold" },
+                      { key: "hi", className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" },
                       hint
                     )
                   : null,
@@ -285,16 +385,16 @@ if (
 
   function SectionTitle({ label, hint }) {
     return h("div", { className: "mb-4" }, [
-      h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-700 dark:text-zinc-300" }, label),
+      h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, label),
       hint
-        ? h("div", { className: "mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-semibold leading-relaxed" }, hint)
+        ? h("div", { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold leading-relaxed" }, hint)
         : null,
     ]);
   }
 
   function Field({ label, children }) {
     return h("label", { className: "block" }, [
-      h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-2.5" }, label),
+      h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-2.5" }, label),
       children,
     ]);
   }
@@ -310,11 +410,10 @@ if (
       step: step,
       min: min,
       disabled: !!disabled,
-      className:
-        classNames(
-          "w-full h-[52px] rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-0 focus:border-zinc-400 dark:focus:border-zinc-500 transition-colors",
-          disabled ? "opacity-55 cursor-not-allowed" : ""
-        ),
+      className: classNames(
+        "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)] placeholder:text-[var(--st-muted)] focus:outline-none focus:ring-0 focus:border-[var(--st-accent)] transition-colors duration-200",
+        disabled ? "opacity-55 cursor-not-allowed" : ""
+      ),
     });
   }
 
@@ -327,8 +426,8 @@ if (
         className: classNames(
           "h-10 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors duration-150",
           active
-            ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
-            : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+            ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+            : "bg-[var(--st-bg)] border-[var(--st-border)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
         ),
       },
       children
@@ -342,34 +441,31 @@ if (
         type: "button",
         onClick,
         className:
-          "h-9 px-3 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs font-bold text-zinc-800 dark:text-zinc-100 transition-colors",
+          "h-9 px-3 rounded-full border border-[var(--st-border)] bg-[var(--st-bg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] text-xs font-bold text-[var(--st-fg)] transition-colors duration-150",
       },
       label
     );
   }
 
   function ValueBlock({ label, valueText, unitText, big, children }) {
-    return h("div", { className: "border border-zinc-300 dark:border-zinc-700 rounded-3xl bg-white dark:bg-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" }, [
+    return h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)]" }, [
       h("div", { className: "p-6" }, [
-        h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-4" }, label),
+        h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-4" }, label),
         h(
           "div",
           { className: classNames("flex items-baseline gap-3 flex-wrap", big ? "pt-1" : "") },
           [
-            h(
-              "div",
-              {
-                className: classNames(
-                  "font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-none",
-                  big ? "text-7xl md:text-8xl" : "text-4xl"
-                ),
-              },
-              valueText || "—"
-            ),
+            h(AnimatedNumberText, {
+              valueText: valueText || "—",
+              className: classNames(
+                "font-black tracking-tight text-[var(--st-fg)] leading-none tabular-nums",
+                big ? "text-7xl md:text-8xl" : "text-4xl"
+              ),
+            }),
             unitText
               ? h(
                   "div",
-                  { className: classNames("text-zinc-600 dark:text-zinc-300 font-extrabold tracking-[.22em] uppercase", big ? "text-xs" : "text-[11px]") },
+                  { className: classNames("text-[var(--st-muted)] font-extrabold tracking-[.22em] uppercase", big ? "text-xs" : "text-[11px]") },
                   unitText
                 )
               : null,
@@ -414,10 +510,10 @@ if (
         intro: "Estimate member depth, span-to-depth ratio, and indicative column or profile sizes from span and load assumptions.",
       },
       {
-        id: "room",
-        label: "Room Program",
-        description: "Room schedule and area program builder",
-        intro: "Build a room schedule from typologies, compare guideline minimums to your areas, and export CSV or PDF.",
+        id: "siteCoverage",
+        label: "Site Coverage Calculator",
+        description: "Plot ratio, coverage and floor area calculator",
+        intro: "Relate plot area, SCR, FAR, and storey count to footprint, total GFA, open space, and simple compliance checks.",
       },
       {
         id: "parking",
@@ -426,10 +522,10 @@ if (
         intro: "Estimate stall counts, aisle widths, and layout efficiency from total parking area and typical module dimensions.",
       },
       {
-        id: "daylight",
-        label: "Daylight Calculator",
-        description: "EN 17037 & IES daylight compliance",
-        intro: "Assess indicative daylight factor against EN 17037; IES daylight metrics as secondary reference.",
+        id: "room",
+        label: "Room Program",
+        description: "Room schedule and area program builder",
+        intro: "Build a room schedule from typologies, compare guideline minimums to your areas, and export CSV or PDF.",
       },
       {
         id: "fireEscape",
@@ -438,21 +534,32 @@ if (
         intro: "Compare travel distance and exit counts to IBC 2021 indicative limits for common occupancies.",
       },
       {
+        id: "daylight",
+        label: "Daylight Calculator",
+        description: "EN 17037 & IES daylight compliance",
+        intro: "Assess indicative daylight factor against EN 17037; IES daylight metrics as secondary reference.",
+      },
+      {
         id: "uValue",
         label: "Wall U-Value Calculator",
         description: "Thermal transmittance and insulation checker",
         intro: "Build layer stacks, compute U-value from resistances, and check indicative ASHRAE 90.1 / EU EPBD limits by climate.",
       },
+    ];
+
+    const TOOL_GROUPS = [
       {
-        id: "siteCoverage",
-        label: "Site Coverage Calculator",
-        description: "Plot ratio, coverage and floor area calculator",
-        intro: "Relate plot area, SCR, FAR, and storey count to footprint, total GFA, open space, and simple compliance checks.",
+        id: "geometry",
+        label: "Geometry",
+        toolIds: ["scale", "stair", "ramp", "span", "siteCoverage", "parking", "room"],
       },
+      { id: "compliance", label: "Compliance", toolIds: ["fireEscape"] },
+      { id: "environment", label: "Environment", toolIds: ["daylight", "uValue"] },
     ];
 
     const TOOL_PATHS = {
-      scale: "/",
+      landing: "/",
+      scale: "/scale-converter",
       stair: "/stair-calculator",
       ramp: "/ramp-calculator",
       span: "/span-calculator",
@@ -466,6 +573,8 @@ if (
 
     function pathToTool(pathname) {
       const p = String(pathname || "").replace(/\/$/, "") || "/";
+      if (p === "/") return "landing";
+      if (p === "/scale-converter") return "scale";
       if (p === "/span-calculator") return "span";
       if (p === "/stair-calculator") return "stair";
       if (p === "/ramp-calculator") return "ramp";
@@ -475,7 +584,7 @@ if (
       if (p === "/fire-escape-calculator") return "fireEscape";
       if (p === "/u-value-calculator") return "uValue";
       if (p === "/site-coverage-calculator") return "siteCoverage";
-      return "scale";
+      return "landing";
     }
 
     const [activeTool, setActiveTool] = useState(() => pathToTool(typeof window !== "undefined" ? window.location.pathname : "/"));
@@ -487,8 +596,14 @@ if (
 
     const getInitialTheme = () => {
       try {
-        const saved = localStorage.getItem("arch-theme");
+        const saved = localStorage.getItem("structura-theme");
         if (saved === "light" || saved === "dark") return saved;
+      } catch {
+        // ignore
+      }
+      try {
+        const legacy = localStorage.getItem("arch-theme");
+        if (legacy === "light" || legacy === "dark") return legacy;
       } catch {
         // ignore
       }
@@ -520,11 +635,11 @@ if (
     const [modelH, setModelH] = useState("");
     const [modelD, setModelD] = useState("");
 
-    // Tool 02 — Stair Calculator
+    // Stair Calculator
     const [stairTotalHeightM, setStairTotalHeightM] = useState("3.0");
     const [stairDesiredRiserCm, setStairDesiredRiserCm] = useState("17");
 
-    // Tool 03 — Ramp Calculator
+    // Ramp Calculator
     const [rampTotalHeightM, setRampTotalHeightM] = useState("0.9");
     const [rampDesiredSlopePct, setRampDesiredSlopePct] = useState("6");
     const [rampLengthM, setRampLengthM] = useState("");
@@ -575,11 +690,20 @@ if (
     const calcKeyRef = useRef("");
     const lastAddedRef = useRef(null);
 
-    const activeToolMeta = useMemo(() => TOOL_ITEMS.find((t) => t.id === activeTool) ?? TOOL_ITEMS[0], [activeTool]);
+    const activeToolMeta = useMemo(() => {
+      if (activeTool === "landing") {
+        return { id: "landing", label: "Structura", description: STRUCTURA_TAGLINE, intro: STRUCTURA_TAGLINE };
+      }
+      return TOOL_ITEMS.find((t) => t.id === activeTool) ?? TOOL_ITEMS[0];
+    }, [activeTool]);
 
     useEffect(() => {
-      document.title = `${activeToolMeta.label} — Architecture Toolkit`;
-    }, [activeToolMeta.label]);
+      if (activeTool === "landing") {
+        document.title = "Structura — Professional tools for architects and engineers";
+      } else {
+        document.title = `${activeToolMeta.label} — Structura`;
+      }
+    }, [activeTool, activeToolMeta.label]);
 
     const roomProgramTotal = useMemo(() => {
       const s = roomProgramRows.reduce((acc, r) => acc + r.userAreaM2, 0);
@@ -591,9 +715,20 @@ if (
       if (t) setRoomProgramAreaStr(formatSmartNumber(t.minAreaM2));
     }, [roomProgramTypeId]);
 
+    function navigateHome() {
+      setActiveTool("landing");
+      try {
+        if (window.location.pathname !== "/") {
+          window.history.pushState({ tool: "landing" }, "", "/");
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     function navigateToTool(toolId) {
       setActiveTool(toolId);
-      const path = TOOL_PATHS[toolId] ?? "/";
+      const path = TOOL_PATHS[toolId] ?? "/scale-converter";
       try {
         if (window.location.pathname !== path) {
           window.history.pushState({ tool: toolId }, "", path);
@@ -611,13 +746,35 @@ if (
       return () => window.removeEventListener("popstate", onPopState);
     }, []);
 
+    useEffect(() => {
+      if (activeTool !== "landing") return undefined;
+      let io;
+      const tid = window.setTimeout(() => {
+        const cards = document.querySelectorAll("[data-landing-card]");
+        if (!cards.length) return;
+        io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) e.target.classList.add("landing-tool-card--visible");
+            });
+          },
+          { rootMargin: "0px 0px -40px 0px", threshold: 0.06 }
+        );
+        cards.forEach((el) => io.observe(el));
+      }, 100);
+      return () => {
+        window.clearTimeout(tid);
+        if (io) io.disconnect();
+      };
+    }, [activeTool]);
+
     function applyTheme(nextTheme) {
       const isDark = nextTheme === "dark";
       document.documentElement.classList.toggle("dark", isDark);
       document.documentElement.style.colorScheme = isDark ? "dark" : "light";
       document.body.classList.add("theme-transition");
       try {
-        localStorage.setItem("arch-theme", nextTheme);
+        localStorage.setItem("structura-theme", nextTheme);
       } catch {
         // ignore
       }
@@ -1429,7 +1586,7 @@ if (
       if (tab === "paper") {
         const paperLabel = `${paperSize}`;
         return [
-          "Scale Converter",
+          "Structura — Scale Converter",
           scaleLine,
           `Paper size: ${paperLabel}`,
           `Paper area: ${computed.paperAreaOut ?? "—"} ${areaUnitLabel(unit)}`,
@@ -1443,7 +1600,7 @@ if (
           `${computed.dOut ?? "—"} ${unitLabel(unit)}`,
         ].join(" × ");
         return [
-          "Scale Converter",
+          "Structura — Scale Converter",
           scaleLine,
           `Input (Real): length ${realLen || "—"} ${unitLabel(unit)}, area ${realArea || "—"} ${areaUnitLabel(unit)}`,
           `Input (Real dims): W ${realW || "—"} / H ${realH || "—"} / D ${realD || "—"} ${unitLabel(unit)}`,
@@ -1462,7 +1619,7 @@ if (
         `${computed.dOut ?? "—"} ${unitLabel(unit)}`,
       ].join(" × ");
       return [
-        "Scale Converter",
+        "Structura — Scale Converter",
         scaleLine,
         `Input (Model): length ${modelLen || "—"} ${unitLabel(unit)}, area ${modelArea || "—"} ${areaUnitLabel(unit)}`,
         `Input (Model dims): W ${modelW || "—"} / H ${modelH || "—"} / D ${modelD || "—"} ${unitLabel(unit)}`,
@@ -1498,6 +1655,10 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "landing") {
+        setStatus({ state: "warn", text: "Open a calculator to copy results." });
+        return;
+      }
       if (activeTool === "uValue") {
         if (!uValueResult) {
           setStatus({ state: "warn", text: "Enter valid thickness (mm) for each layer." });
@@ -2239,7 +2400,7 @@ if (
 
       const lines = [];
       lines.push(projectName ? projectName : "Project (untitled)");
-      lines.push(`Scale Converter`);
+      lines.push("Structura — Scale Converter");
       lines.push(`Scale: ${scale} • Unit: ${unitStr} • Tab: ${computed.mode}`);
       lines.push(`Timestamp: ${timestamp}`);
       lines.push("");
@@ -2614,17 +2775,17 @@ if (
 
     function ResultHeader() {
       const pillClasses = classNames(
-        "inline-flex items-center justify-center h-8 px-3.5 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors",
+        "inline-flex items-center justify-center h-8 px-3.5 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors duration-150",
         statusState === "ok"
-          ? "bg-zinc-900 border-zinc-900 text-white"
+          ? "bg-[#16A34A] border-[#16A34A] text-white"
           : statusState === "warn"
-            ? "bg-white border-zinc-300 text-zinc-900 dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-100"
-            : "bg-white border-zinc-200 text-zinc-600 dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-200"
+            ? "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)]"
+            : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]"
       );
-      return h("div", { className: "flex items-start justify-between gap-3 mb-5 pb-4 border-b border-zinc-200/80 dark:border-zinc-800/80" }, [
+      return h("div", { className: "flex items-start justify-between gap-3 mb-5 pb-4 border-b border-[var(--st-border)]" }, [
         h("div", {}, [
-          h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400" }, computed.title),
-          h("div", { className: "mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-semibold" }, `Scale 1:${denomSafe} • Unit ${unitLabel(unit)}`),
+          h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, computed.title),
+          h("div", { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold" }, `Scale 1:${denomSafe} • Unit ${unitLabel(unit)}`),
         ]),
         h("div", { className: pillClasses }, status.text),
       ]);
@@ -2651,12 +2812,12 @@ if (
           h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
             h(
               "button",
-              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-zinc-900 text-white font-extrabold tracking-wide hover:bg-black transition-colors shadow-sm" },
+              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
               "Copy as text"
             ),
             h(
               "button",
-              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors" },
+              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
               "Export CSV"
             ),
             h(
@@ -2664,7 +2825,7 @@ if (
               {
                 type: "button",
                 onClick: () => setPdfModalOpen(true),
-                className: "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
               },
               "Export PDF"
             ),
@@ -2701,17 +2862,23 @@ if (
               big: true,
             }),
           ]),
-          h("div", { className: "border border-zinc-300 dark:border-zinc-700 rounded-3xl bg-zinc-50/70 dark:bg-zinc-900/40 p-6" }, [
-            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400 mb-3" }, dimsLabel),
+          h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-6" }, [
+            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, dimsLabel),
             h("div", { className: "flex items-baseline gap-3 flex-wrap" }, [
-              h("div", { className: "font-black tracking-tight text-zinc-900 dark:text-zinc-50 text-4xl" }, computed.wOut && computed.hOut && computed.dOut ? dimsText : "—"),
-              h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-300" }, unitLabel(unit)),
+              h(AnimatedNumberText, {
+                valueText: computed.wOut && computed.hOut && computed.dOut ? dimsText : "—",
+                className: "font-black tracking-tight text-[var(--st-fg)] text-4xl tabular-nums",
+              }),
+              h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, unitLabel(unit)),
             ]),
-            h("div", { className: "mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4" }, [
-              h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400 mb-2" }, volLabel),
+            h("div", { className: "mt-4 border-t border-[var(--st-border)] pt-4" }, [
+              h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, volLabel),
               h("div", { className: "flex items-baseline gap-3" }, [
-                h("div", { className: "font-black tracking-tight text-zinc-900 dark:text-zinc-50 text-3xl" }, computed.volOut || "—"),
-                h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-300" }, volumeUnitLabel(unit)),
+                h(AnimatedNumberText, {
+                  valueText: computed.volOut || "—",
+                  className: "font-black tracking-tight text-[var(--st-fg)] text-3xl tabular-nums",
+                }),
+                h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, volumeUnitLabel(unit)),
               ]),
             ]),
           ]),
@@ -2720,12 +2887,12 @@ if (
           h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
             h(
               "button",
-              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-zinc-900 text-white font-extrabold tracking-wide hover:bg-black transition-colors shadow-sm" },
+              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
               "Copy as text"
             ),
             h(
               "button",
-              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors" },
+              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
               "Export CSV"
             ),
             h(
@@ -2733,7 +2900,7 @@ if (
               {
                 type: "button",
                 onClick: () => setPdfModalOpen(true),
-                className: "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
               },
               "Export PDF"
             ),
@@ -2748,7 +2915,7 @@ if (
         { id: "reverse", label: "Reverse" },
         { id: "paper", label: "Paper size" },
       ];
-      return h("div", { className: "flex gap-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-2 mb-4" }, [
+      return h("div", { className: "flex gap-2 bg-[var(--st-bg)] border border-[var(--st-border)] rounded-2xl p-2 mb-4" }, [
         tabs.map((t) =>
           h(ValueButton, {
             key: t.id,
@@ -2760,14 +2927,14 @@ if (
     }
 
     function ScaleSelector() {
-      return h("div", { className: "bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-3xl p-5 mb-5 shadow-[0_6px_20px_rgba(0,0,0,0.04)]" }, [
+      return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
         h("div", { className: "flex items-end justify-between gap-4 mb-3" }, [
           h("div", {}, [
-            h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400" }, "Scale"),
-            h("div", { className: "mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-semibold" }, "Preset buttons + custom ratio"),
+            h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" }, "Scale"),
+            h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, "Preset buttons + custom ratio"),
           ]),
           h("div", { className: "text-right" }, [
-            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400 mb-2" }, "1 :"),
+            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, "1 :"),
             h("div", { className: "flex items-center gap-2 justify-end" }, [
               h("input", {
                 value: customDenom,
@@ -2780,14 +2947,14 @@ if (
                 type: "number",
                 min: 1,
                 step: "1",
-                className: "h-11 w-28 rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500 text-zinc-900 dark:text-zinc-100",
+                className: "h-11 w-28 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-3 focus:outline-none focus:border-[var(--st-accent)] text-[var(--st-fg)]",
                 onKeyDown: (e) => {
                   if (e.key === "Enter") applyCustomDenom();
                 },
               }),
               h(
                 "button",
-                { type: "button", onClick: applyCustomDenom, className: "h-11 px-4 rounded-2xl bg-zinc-900 text-white font-extrabold hover:bg-black transition-colors" },
+                { type: "button", onClick: applyCustomDenom, className: "h-11 px-4 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold hover:brightness-110 transition-colors duration-150" },
                 "Apply"
               ),
             ]),
@@ -2804,8 +2971,8 @@ if (
                 className: classNames(
                   "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
                   denomSafe === p
-                    ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
-                    : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                    ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                    : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
                 ),
               },
               `1:${p}`
@@ -2816,10 +2983,10 @@ if (
     }
 
     function UnitSwitcher() {
-      return h("div", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 mb-5" }, [
+      return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
         h("div", { className: "mb-3" }, [
-          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400" }, "Unit"),
-          h("div", { className: "mt-1 text-xs text-zinc-500 dark:text-zinc-400 font-semibold" }, "Affects input + output display"),
+          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)]" }, "Unit"),
+          h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, "Affects input + output display"),
         ]),
         h("div", { className: "flex flex-wrap gap-2" }, [
           UNIT_OPTIONS.map((u) =>
@@ -2832,8 +2999,8 @@ if (
                 className: classNames(
                   "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
                   unit === u
-                    ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
-                    : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                    ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                    : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
                 ),
               },
               u === "ft-in" ? "ft-in" : u
@@ -2845,9 +3012,9 @@ if (
 
     function HistoryPanel() {
       return h("div", {}, [
-        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400 mb-3" }, "History (last 6)"),
+        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, "History (last 6)"),
         history.length === 0
-          ? h("div", { className: "text-xs text-zinc-500 dark:text-zinc-400 font-semibold" }, "Press Enter to add a calculation.")
+          ? h("div", { className: "text-xs text-[var(--st-muted)] font-semibold" }, "Press Enter to add a calculation.")
           : h("div", { className: "flex flex-col gap-2" }, history.map((it, idx) => {
               const label =
                 it.tab === "paper"
@@ -2882,11 +3049,11 @@ if (
                     setStatus({ state: "ok", text: "Loaded from history." });
                   },
                   className:
-                    "text-left rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 px-4 py-3 transition-colors",
+                    "text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] px-4 py-3 transition-colors",
                 },
                 [
-                  h("div", { key: "t", className: "text-xs font-extrabold tracking-wide text-zinc-900 dark:text-zinc-50" }, label),
-                  h("div", { key: "s", className: "text-[11px] mt-1 text-zinc-500 dark:text-zinc-400 font-semibold" }, `Unit ${it.unit}`),
+                  h("div", { key: "t", className: "text-xs font-extrabold tracking-wide text-[var(--st-fg)]" }, label),
+                  h("div", { key: "s", className: "text-[11px] mt-1 text-[var(--st-muted)] font-semibold" }, `Unit ${it.unit}`),
                 ]
               );
             })),
@@ -2907,7 +3074,7 @@ if (
         h(UnitSwitcher, {}),
 
         tab !== "paper"
-          ? h("div", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5" }, [
+          ? h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
               // 2D
               h(SectionTitle, {
                 label: tab === "convert" ? "2D (real → model)" : "2D (model → real)",
@@ -2926,7 +3093,7 @@ if (
               h(QuickChips, {}),
 
               // divider
-              h("div", { className: "h-px bg-zinc-300/80 dark:bg-zinc-700/80 my-6" }),
+              h("div", { className: "h-px bg-[var(--st-border)] my-6" }),
 
               // 3D
               h(SectionTitle, { label: "3D (dimensions + volume)", hint: "Width × height × depth" }),
@@ -2936,7 +3103,7 @@ if (
                 h(Field, { label: tab === "convert" ? `Depth (${unitLabel(unit)})` : `Depth (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realD : modelD, onChange: tab === "convert" ? setRealD : setModelD, placeholder: "e.g., 1.5" }) }),
               ]),
             ])
-          : h("div", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5" }, [
+          : h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
               h(SectionTitle, { label: "Paper size calculator", hint: "How much real area fits at your scale" }),
               h(Field, {
                 label: "Select paper size (A0–A4)",
@@ -2944,10 +3111,10 @@ if (
                   value: paperSize,
                   onChange: (e) => setPaperSize(e.target.value),
                   className:
-                    "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                    "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                 }, Object.keys(PAPER_SIZES).map((k) => h("option", { key: k, value: k }, k))),
               }),
-              h("div", { className: "mt-4 text-xs text-zinc-500 dark:text-zinc-400 font-semibold" }, "Tip: change scale presets and instantly see the real area that fits."),
+              h("div", { className: "mt-4 text-xs text-[var(--st-muted)] font-semibold" }, "Tip: change scale presets and instantly see the real area that fits."),
             ]),
 
         h("div", { className: "mt-5" }, [
@@ -2960,7 +3127,7 @@ if (
             {
               type: "button",
               onClick: onReset,
-              className: "w-full h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+              className: "w-full h-12 rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] text-[var(--st-fg)] font-extrabold hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors",
             },
             "Reset"
           ),
@@ -2988,7 +3155,7 @@ if (
                     value: roomProgramTypeId,
                     onChange: (e) => setRoomProgramTypeId(e.target.value),
                     className:
-                      "w-full h-[52px] rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900 px-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500",
+                      "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
                   },
                   ROOM_PROGRAM_TYPES.map((opt) => h("option", { key: opt.id, value: opt.id }, opt.name))
                 ),
@@ -2997,7 +3164,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300 space-y-1",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-xs font-semibold text-[var(--st-muted)] space-y-1",
                 },
                 [
                   h("div", { key: "a" }, `Recommended minimum area: ${formatSmartNumber(rt.minAreaM2)} m²`),
@@ -3021,7 +3188,7 @@ if (
                   type: "button",
                   onClick: addRoomToProgram,
                   className:
-                    "w-full h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                    "w-full h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                 },
                 "Add to list"
               ),
@@ -3035,34 +3202,34 @@ if (
               roomProgramRows.length === 0
                 ? h(
                     "div",
-                    { className: "text-sm font-semibold text-zinc-500 dark:text-zinc-400" },
+                    { className: "text-sm font-semibold text-[var(--st-muted)]" },
                     "No rooms yet. Add a room from the left."
                   )
                 : h(
                     "div",
-                    { className: "overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-700" },
+                    { className: "overflow-x-auto rounded-2xl border border-[var(--st-border)]" },
                     h(
                       "table",
                       { className: "w-full text-left text-sm border-collapse" },
                       [
                         h(
                           "thead",
-                          { className: "bg-zinc-100 dark:bg-zinc-900/80 text-[10px] font-extrabold tracking-[.18em] uppercase text-zinc-600 dark:text-zinc-300" },
+                          { className: "bg-[color-mix(in_srgb,var(--st-fg)_8%,var(--st-bg))] text-[10px] font-extrabold tracking-[.18em] uppercase text-[var(--st-muted)]" },
                           h("tr", {}, [
-                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Name"),
-                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Min area"),
-                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Your area"),
-                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 w-24" }, ""),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Name"),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Min area"),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)]" }, "Your area"),
+                            h("th", { className: "px-4 py-3 border-b border-[var(--st-border)] w-24" }, ""),
                           ])
                         ),
                         h(
                           "tbody",
                           {},
                           roomProgramRows.map((row) =>
-                            h("tr", { key: row.uid, className: "border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-white dark:bg-zinc-950/50" }, [
-                              h("td", { className: "px-4 py-3 font-bold text-zinc-900 dark:text-zinc-50" }, row.name),
-                              h("td", { className: "px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-200" }, `${formatSmartNumber(row.minAreaM2)} m²`),
-                              h("td", { className: "px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-200" }, `${formatSmartNumber(row.userAreaM2)} m²`),
+                            h("tr", { key: row.uid, className: "border-b border-[var(--st-border)] last:border-0 bg-[var(--st-bg)]/50" }, [
+                              h("td", { className: "px-4 py-3 font-bold text-[var(--st-fg)]" }, row.name),
+                              h("td", { className: "px-4 py-3 font-semibold text-[var(--st-fg)]" }, `${formatSmartNumber(row.minAreaM2)} m²`),
+                              h("td", { className: "px-4 py-3 font-semibold text-[var(--st-fg)]" }, `${formatSmartNumber(row.userAreaM2)} m²`),
                               h("td", { className: "px-4 py-3" }, [
                                 h(
                                   "button",
@@ -3081,13 +3248,13 @@ if (
                       ]
                     )
                   ),
-              h("div", { className: "flex items-baseline justify-between gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700" }, [
+              h("div", { className: "flex items-baseline justify-between gap-4 pt-4 border-t border-[var(--st-border)]" }, [
                 h(
                   "div",
-                  { className: "text-[11px] font-extrabold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400" },
+                  { className: "text-[11px] font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" },
                   "Total program area"
                 ),
-                h("div", { className: "text-2xl font-black text-zinc-900 dark:text-zinc-50" }, `${formatSmartNumber(roomProgramTotal)} m²`),
+                h("div", { className: "text-2xl font-black text-[var(--st-fg)]" }, `${formatSmartNumber(roomProgramTotal)} m²`),
               ]),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2" }, [
                 h(
@@ -3096,7 +3263,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -3106,7 +3273,7 @@ if (
                     type: "button",
                     onClick: exportRoomProgramCSV,
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export CSV"
                 ),
@@ -3116,7 +3283,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -3130,12 +3297,12 @@ if (
         const pr = parkingResult;
         const effBadgeClass =
           pr && pr.effLevel === "efficient"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : pr && pr.effLevel === "acceptable"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : pr
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const layoutSvg = pr
           ? h(
@@ -3143,7 +3310,7 @@ if (
               {
                 viewBox: "0 0 320 140",
                 className:
-                  "w-full h-auto max-h-52 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                  "w-full h-auto max-h-52 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
@@ -3197,7 +3364,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter a valid parking area to preview the layout."
             );
@@ -3239,7 +3406,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 "Modules use double-loaded aisles: parallel stalls 2.2×6 m; perpendicular & angled stalls 2.5×5 m with aisles as listed."
               ),
@@ -3285,8 +3452,8 @@ if (
                   ])
                 : null,
               pr
-                ? h("div", { className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
-                    h("span", { className: "text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Ramp required"),
+                ? h("div", { className: "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3 text-sm font-semibold text-[var(--st-fg)]" }, [
+                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Ramp required"),
                     pr.rampRequired ? "Yes (area > 500 m²)" : "No",
                   ])
                 : null,
@@ -3297,7 +3464,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -3307,7 +3474,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors sm:col-span-1",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150 sm:col-span-1",
                   },
                   "Export PDF"
                 ),
@@ -3321,12 +3488,12 @@ if (
         const dr = daylightResult;
         const compBadgeClass =
           dr && dr.complianceLevel === "green"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : dr && dr.complianceLevel === "yellow"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : dr
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const penFrac = dr && dr.depthM > 0 ? Math.min(1, dr.penetrationM / dr.depthM) : 0;
         const xPen = 56 + penFrac * 210;
@@ -3337,7 +3504,7 @@ if (
               {
                 viewBox: "0 0 320 140",
                 className:
-                  "w-full h-auto max-h-56 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                  "w-full h-auto max-h-56 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
@@ -3390,7 +3557,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter valid dimensions to preview daylight penetration."
             );
@@ -3412,7 +3579,7 @@ if (
                     value: daylightRoomType,
                     onChange: (e) => setDaylightRoomType(e.target.value),
                     className:
-                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                      "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
                   DAYLIGHT_ROOM_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
                 ),
@@ -3461,7 +3628,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 `EN 17037 minimum daylight factor: ${formatSmartNumber(2)}% (bedroom, living room, kitchen, hospital room) / ${formatSmartNumber(3)}% (office, classroom). IES metrics (e.g. LM-83) as secondary reference.`
               ),
@@ -3507,10 +3674,10 @@ if (
                   ])
                 : null,
               dr
-                ? h("div", { className: "space-y-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3" }, [
-                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-zinc-500 dark:text-zinc-400" }, "Compliance (indicative)"),
-                    h("div", { className: "text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1" }, "Primary: EN 17037 · Secondary: IES daylight metrics"),
-                    h("div", { className: "text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
+                ? h("div", { className: "space-y-2 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3" }, [
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, "Compliance (indicative)"),
+                    h("div", { className: "text-xs font-semibold text-[var(--st-muted)] mb-1" }, "Primary: EN 17037 · Secondary: IES daylight metrics"),
+                    h("div", { className: "text-sm font-semibold text-[var(--st-fg)]" }, [
                       `EN 17037 (min DF ${formatSmartNumber(dr.enDfMin)}% for ${dr.roomLabel}): `,
                       h("span", { className: dr.enOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.enOk ? "Pass" : "Fail"),
                     ]),
@@ -3518,10 +3685,10 @@ if (
                 : null,
               dr
                 ? h("div", { className: "space-y-2" }, [
-                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-zinc-500 dark:text-zinc-400" }, "Recommendations"),
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, "Recommendations"),
                     h(
                       "ul",
-                      { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-zinc-700 dark:text-zinc-300" },
+                      { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-[var(--st-muted)]" },
                       dr.recommendations.length
                         ? dr.recommendations.map((s, i) => h("li", { key: i }, s))
                         : [h("li", { key: "ok" }, "No changes required for indicative EN 17037 targets.")]
@@ -3535,7 +3702,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -3545,7 +3712,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -3559,12 +3726,12 @@ if (
         const fr = fireEscapeResult;
         const fireBadgeClass =
           fr && fr.complianceLevel === "full"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : fr && fr.complianceLevel === "marginal"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : fr
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const travelRatioVis = fr && fr.maxTravelM > 0 ? Math.min(1, fr.travelM / fr.maxTravelM) : 0;
 
@@ -3574,7 +3741,7 @@ if (
               {
                 viewBox: "0 0 320 180",
                 className:
-                  "w-full h-auto max-h-64 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                  "w-full h-auto max-h-64 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
@@ -3636,7 +3803,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter valid inputs to preview travel path and exits."
             );
@@ -3658,7 +3825,7 @@ if (
                     value: fireBuildingType,
                     onChange: (e) => setFireBuildingType(e.target.value),
                     className:
-                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                      "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
                   FIRE_BUILDING_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
                 ),
@@ -3716,7 +3883,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 `IBC 2021: minimum ${formatSmartNumber(FIRE_EXIT_WIDTH_M)} m per exit; two exits required when floor area exceeds ${FIRE_AREA_TWO_EXIT_M2} m².`
               ),
@@ -3762,8 +3929,8 @@ if (
                   ])
                 : null,
               fr
-                ? h("div", { className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
-                    h("span", { className: "text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Reference"),
+                ? h("div", { className: "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3 text-sm font-semibold text-[var(--st-fg)]" }, [
+                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Reference"),
                     "IBC 2021 — verify with AHJ and full code path.",
                   ])
                 : null,
@@ -3784,7 +3951,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -3794,7 +3961,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -3808,12 +3975,12 @@ if (
         const ur = uValueResult;
         const uBadgeClass =
           ur && ur.complianceLevel === "green"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : ur && ur.complianceLevel === "yellow"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : ur
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const twMmSvg = ur ? ur.layerRows.reduce((a, b) => a + b.thicknessMm, 0) : 0;
         const svgChildren = [];
@@ -3869,7 +4036,7 @@ if (
               {
                 viewBox: "0 0 320 88",
                 className:
-                  "w-full h-auto max-h-40 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-800 dark:text-zinc-100",
+                  "w-full h-auto max-h-40 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               svgChildren
@@ -3878,7 +4045,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter valid layer thicknesses to preview build-up."
             );
@@ -3897,7 +4064,7 @@ if (
                     value: uClimateZone,
                     onChange: (e) => setUClimateZone(e.target.value),
                     className:
-                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                      "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
                   U_VALUE_CLIMATES.map((c) => h("option", { key: c.id, value: c.id }, c.label))
                 ),
@@ -3913,7 +4080,7 @@ if (
               ...uLayers.map((layer) =>
                 h(
                   "div",
-                  { key: layer.uid, className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/20 p-3 space-y-3" },
+                  { key: layer.uid, className: "rounded-2xl border border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-3 space-y-3" },
                   [
                     h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, [
                       h(Field, {
@@ -3924,7 +4091,7 @@ if (
                             value: layer.materialId,
                             onChange: (e) => updateULayer(layer.uid, { materialId: e.target.value }),
                             className:
-                              "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 text-zinc-900 dark:text-zinc-100 text-sm",
+                              "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)] text-sm",
                           },
                           U_VALUE_MATERIALS.map((m) => h("option", { key: m.id, value: m.id }, m.label))
                         ),
@@ -3948,7 +4115,7 @@ if (
                         disabled: uLayers.length <= 1,
                         onClick: () => removeULayer(layer.uid),
                         className:
-                          "h-9 px-4 rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 text-xs font-extrabold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed",
+                          "h-9 px-4 rounded-xl border border-[var(--st-border)] bg-[var(--st-bg)] text-xs font-extrabold text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] disabled:opacity-40 disabled:cursor-not-allowed",
                       },
                       "Remove layer"
                     ),
@@ -3962,7 +4129,7 @@ if (
                   disabled: uLayers.length >= 8,
                   onClick: addULayer,
                   className:
-                    "w-full h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                    "w-full h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
                 },
                 "Add layer"
               ),
@@ -3970,7 +4137,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 "λ from literature; R = d/λ per layer except air gap (fixed R). U = 1/(Rsi + ΣR + Rso). Window/glazing uses indicative max U per EPBD-style table."
               ),
@@ -4022,7 +4189,7 @@ if (
                   ])
                 : null,
               ur
-                ? h("div", { className: "text-[11px] font-semibold text-zinc-500 dark:text-zinc-400" }, "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.")
+                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)]" }, "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.")
                 : null,
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
@@ -4031,7 +4198,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -4041,7 +4208,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -4055,12 +4222,12 @@ if (
         const sr = siteCoverageResult;
         const siteBadgeClass =
           sr && sr.complianceLevel === "green"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : sr && sr.complianceLevel === "yellow"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : sr
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const plotX = 28;
         const plotY = 24;
@@ -4079,7 +4246,7 @@ if (
               {
                 viewBox: "0 0 320 200",
                 className:
-                  "w-full h-auto max-h-64 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-800 dark:text-zinc-100",
+                  "w-full h-auto max-h-64 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
@@ -4203,7 +4370,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter a valid plot, SCR (0–1), FAR (0–10), and floor count to preview the site plan."
             );
@@ -4272,7 +4439,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 "Checks assume a uniform footprint on each floor at max SCR. FAR cap applies to total GFA; basement policy varies by code — shown for reference only."
               ),
@@ -4332,7 +4499,7 @@ if (
               sr && sr.basementIncluded && sr.basementAreaM2 != null
                 ? h("div", { className: "rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/40 px-4 py-3" }, [
                     h("div", { className: "text-[10px] font-extrabold tracking-[.2em] uppercase text-slate-600 dark:text-slate-400 mb-1" }, "Basement (below grade)"),
-                    h("div", { className: "text-lg font-black text-zinc-900 dark:text-zinc-50" }, `${formatSmartNumber(sr.basementAreaM2)} m²`),
+                    h("div", { className: "text-lg font-black text-[var(--st-fg)]" }, `${formatSmartNumber(sr.basementAreaM2)} m²`),
                   ])
                 : null,
               sr && sr.exceedsFar
@@ -4363,7 +4530,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -4373,7 +4540,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -4393,28 +4560,28 @@ if (
 
         const designBadgeClass =
           spanResult && spanResult.designStatus === "efficient"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : spanResult && spanResult.designStatus === "acceptable"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : spanResult
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const spanLimitBadgeClass =
           spanResult && spanResult.spanWarnLevel === "green"
-            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
             : spanResult && spanResult.spanWarnLevel === "yellow"
-              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
               : spanResult && spanResult.spanWarnLevel === "red"
-                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
-                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
 
         const diagramEl = spanResult
           ? h(
               "svg",
               {
                 viewBox: "0 0 440 152",
-                className: "w-full h-auto rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
@@ -4475,7 +4642,7 @@ if (
               "div",
               {
                 className:
-                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+                  "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
               "Enter a valid span to preview the cross-section."
             );
@@ -4508,7 +4675,7 @@ if (
                     value: spanSystem,
                     onChange: (e) => setSpanSystem(e.target.value),
                     className:
-                      "w-full h-[52px] rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900 px-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500",
+                      "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
                   },
                   SPAN_SYSTEM_OPTIONS.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label))
                 ),
@@ -4525,7 +4692,7 @@ if (
                 h(ValueButton, { active: spanLoad === "medium", onClick: () => setSpanLoad("medium") }, "Medium"),
                 h(ValueButton, { active: spanLoad === "heavy", onClick: () => setSpanLoad("heavy") }, "Heavy"),
               ]),
-              h("div", { className: "text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 leading-relaxed" }, [
+              h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed" }, [
                 h("div", {}, "Light — residential"),
                 h("div", {}, "Medium — office / commercial"),
                 h("div", {}, "Heavy — industrial"),
@@ -4560,7 +4727,7 @@ if (
                     "div",
                     {
                       className:
-                        "rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-4 py-3 text-xs font-semibold text-zinc-700 dark:text-zinc-200",
+                        "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3 text-xs font-semibold text-[var(--st-fg)]",
                     },
                     spanResult.spanWarnText
                   )
@@ -4572,12 +4739,12 @@ if (
                 unitText: "cm",
                 big: true,
               }),
-              h("div", { className: "border border-zinc-300 dark:border-zinc-700 rounded-3xl bg-white dark:bg-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]" }, [
+              h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)]" }, [
                 h("div", { className: "p-6" }, [
-                  h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-3" }, "Column / profile suggestion"),
+                  h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-3" }, "Column / profile suggestion"),
                   h(
                     "div",
-                    { className: "text-lg md:text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-snug" },
+                    { className: "text-lg md:text-xl font-black tracking-tight text-[var(--st-fg)] leading-snug" },
                     spanResult ? spanResult.memberSuggestion : "—"
                   ),
                 ]),
@@ -4595,7 +4762,7 @@ if (
                     type: "button",
                     onClick: onCopy,
                     className:
-                      "h-12 rounded-2xl bg-zinc-900 text-white font-extrabold tracking-wide hover:bg-black transition-colors shadow-sm",
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                   },
                   "Copy as text"
                 ),
@@ -4605,7 +4772,7 @@ if (
                     type: "button",
                     onClick: () => setPdfModalOpen(true),
                     className:
-                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                   },
                   "Export PDF"
                 ),
@@ -4618,11 +4785,11 @@ if (
       if (activeTool === "ramp") {
         const statusClass = rampResult
           ? rampResult.statusTone === "low"
-            ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border-zinc-300 dark:border-zinc-700"
+            ? "bg-[color-mix(in_srgb,var(--st-fg)_12%,var(--st-bg))] text-[var(--st-fg)] border-[var(--st-border)]"
             : rampResult.statusTone === "high"
-              ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-200"
-              : "bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
-          : "bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800";
+              ? "bg-[var(--st-accent)] text-white border-[var(--st-accent)]"
+              : "bg-[#CA8A04]/15 text-[var(--st-fg)] border-[#CA8A04]/35"
+          : "bg-[color-mix(in_srgb,var(--st-fg)_8%,var(--st-bg))] text-[var(--st-muted)] border-[var(--st-border)]";
         const meterWidth = rampResult
           ? rampResult.statusTone === "low"
             ? "w-1/3"
@@ -4632,10 +4799,10 @@ if (
           : "w-0";
         const meterTone = rampResult
           ? rampResult.statusTone === "low"
-            ? "bg-zinc-400 dark:bg-zinc-500"
+            ? "bg-[var(--st-muted)]"
             : rampResult.statusTone === "mid"
-              ? "bg-zinc-600 dark:bg-zinc-400"
-              : "bg-zinc-900 dark:bg-zinc-100"
+              ? "bg-[#CA8A04]"
+              : "bg-[var(--st-accent)]"
           : "bg-transparent";
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -4686,13 +4853,13 @@ if (
                     className: classNames(
                       "h-8 px-3 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors",
                       rampInputMode === "slope"
-                        ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
-                        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
+                        ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                        : "bg-[var(--st-bg)] border-[var(--st-border)] text-[var(--st-muted)]"
                     ),
                   },
                   "Use slope"
                 ),
-                h("div", { className: "text-center text-xs font-bold tracking-[.22em] uppercase text-zinc-400 dark:text-zinc-500" }, "or"),
+                h("div", { className: "text-center text-xs font-bold tracking-[.22em] uppercase text-[var(--st-muted)]" }, "or"),
                 h(
                   "button",
                   {
@@ -4704,8 +4871,8 @@ if (
                     className: classNames(
                       "h-8 px-3 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors",
                       rampInputMode === "length"
-                        ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
-                        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
+                        ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                        : "bg-[var(--st-bg)] border-[var(--st-border)] text-[var(--st-muted)]"
                     ),
                   },
                   "Use length"
@@ -4731,7 +4898,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-4 text-xs font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 "Logic: slope (%) = (height / length) × 100 and length = height / slope."
               ),
@@ -4743,12 +4910,12 @@ if (
             tone: "results",
             children: h("div", { className: "flex flex-col gap-5" }, [
               h("div", { className: `inline-flex self-start items-center h-9 px-4 rounded-full border text-[11px] font-extrabold tracking-[.18em] uppercase ${statusClass}` }, rampResult ? rampResult.status : "Awaiting input"),
-              h("div", { className: "border border-zinc-300 dark:border-zinc-700 rounded-2xl bg-zinc-50/80 dark:bg-zinc-900/50 p-4" }, [
-                h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-2" }, "Slope quality"),
-                h("div", { className: "h-2 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden" }, [
+              h("div", { className: "border border-[var(--st-border)] rounded-2xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-4" }, [
+                h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-2" }, "Slope quality"),
+                h("div", { className: "h-2 rounded-full bg-[var(--st-border)] overflow-hidden" }, [
                   h("div", { className: `h-full rounded-full transition-all duration-200 ${meterWidth} ${meterTone}` }),
                 ]),
-                h("div", { className: "mt-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : "Enter height and slope or length"),
+                h("div", { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : "Enter height and slope or length"),
               ]),
               h(ValueBlock, {
                 label: "Calculated slope",
@@ -4818,7 +4985,7 @@ if (
                 "div",
                 {
                   className:
-                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4 text-xs font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                    "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-4 text-xs font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
                 "Rule used: 2 × riser + tread ≈ 63 cm"
               ),
@@ -4873,101 +5040,195 @@ if (
       ]);
     }
 
-    return h("div", { className: "min-h-screen flex flex-col px-4 py-12 md:py-14 bg-zinc-50 dark:bg-zinc-950" }, [
+    const landingToolsList = TOOL_GROUPS.flatMap((g) =>
+      g.toolIds.map((tid) => TOOL_ITEMS.find((t) => t.id === tid)).filter(Boolean)
+    );
+
+    if (activeTool === "landing") {
+      return h("div", { className: "min-h-screen flex flex-col bg-[var(--st-bg)] text-[var(--st-fg)]" }, [
+        h("header", { className: "max-w-6xl mx-auto w-full px-4 pt-6 flex justify-end" }, h(ThemeToggleButton, { theme, setTheme })),
+        h("section", { className: "max-w-6xl mx-auto w-full px-4 pt-4 pb-10 md:pt-10 md:pb-14" }, [
+          h(
+            "h1",
+            {
+              className:
+                "structura-hero-line structura-hero-line--1 font-display text-[clamp(2.5rem,10vw,4.25rem)] md:text-[72px] font-bold tracking-tight leading-[1.02] text-[var(--st-fg)]",
+            },
+            "Structura"
+          ),
+          h(
+            "p",
+            {
+              className: "structura-hero-line structura-hero-line--2 mt-5 text-lg md:text-xl text-[var(--st-muted)] font-medium max-w-2xl leading-snug",
+            },
+            STRUCTURA_TAGLINE
+          ),
+          h(
+            "button",
+            {
+              type: "button",
+              className:
+                "structura-hero-line structura-hero-line--4 mt-10 h-14 px-8 rounded-2xl bg-[var(--st-accent)] text-white font-semibold text-[15px] tracking-wide hover:brightness-110 transition-all duration-150",
+              onClick: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
+            },
+            "Open Toolkit"
+          ),
+        ]),
+        h("section", { id: "structura-tool-grid", className: "max-w-6xl mx-auto w-full px-4 pb-16 md:pb-24" }, [
+          h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, "Toolkit"),
+          h(
+            "div",
+            { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" },
+            landingToolsList.map((tool, idx) =>
+              h(
+                "button",
+                {
+                  key: tool.id,
+                  type: "button",
+                  "data-landing-card": "1",
+                  style: { transitionDelay: `${Math.min(idx, 14) * 100}ms` },
+                  className:
+                    "landing-tool-card group w-full text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-5 hover:-translate-y-1 hover:border-[var(--st-accent)] transition-[transform,border-color] duration-150",
+                  onClick: () => navigateToTool(tool.id),
+                },
+                h("div", { className: "flex gap-4 items-start" }, [
+                  h(LandingToolIcon, { toolId: tool.id }),
+                  h("div", { className: "min-w-0" }, [
+                    h(
+                      "div",
+                      {
+                        className: "text-[15px] font-semibold text-[var(--st-fg)] group-hover:text-[var(--st-accent)] transition-colors duration-150 font-sans",
+                      },
+                      tool.label
+                    ),
+                    h("div", { className: "mt-1 text-sm text-[var(--st-muted)] leading-snug font-sans" }, tool.description),
+                  ]),
+                ])
+              )
+            )
+          ),
+        ]),
+        h("footer", { className: "mt-auto pt-10 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
+          h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, "Designed & developed by Melih Özdemir"),
+          h(
+            "div",
+            { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-xl mx-auto leading-relaxed opacity-95" },
+            "© 2025 Structura. Designed & developed by Melih Özdemir. All rights reserved."
+          ),
+          h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, "Structura — 2025"),
+        ]),
+      ]);
+    }
+
+    return h("div", { className: "min-h-screen flex flex-col px-4 py-12 md:py-14 bg-[var(--st-bg)] text-[var(--st-fg)]" }, [
       h(
         "div",
         { className: "flex-1 max-w-7xl mx-auto w-full space-y-8" },
         [
-            h("header", { className: "pb-7 border-b border-zinc-200 dark:border-zinc-800" }, [
-              h("div", { className: "text-[11px] font-bold tracking-[.30em] uppercase text-zinc-700 dark:text-zinc-300 mb-3" }, "Architecture Toolkit"),
-              h("div", { className: "flex items-end justify-between gap-4 flex-wrap" }, [
-                h("div", {}, [
-                  h("h1", { className: "text-4xl md:text-5xl font-black tracking-tight text-zinc-900 leading-[1.03] dark:text-zinc-50" }, "Architecture Toolkit"),
-                  h("div", { className: "mt-3 text-[11px] font-extrabold tracking-[.24em] uppercase text-zinc-700 dark:text-zinc-300" }, activeToolMeta.label),
-                ]),
+          h("header", { className: "pb-7 border-b border-[var(--st-border)]" }, [
+            h("div", { className: "flex items-end justify-between gap-4 flex-wrap" }, [
+              h("div", { className: "min-w-0" }, [
                 h(
                   "button",
                   {
                     type: "button",
-                    onClick: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+                    onClick: navigateHome,
                     className:
-                      "w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors duration-150 text-zinc-900 dark:text-zinc-100",
-                    "aria-label": "Toggle dark mode",
+                      "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-accent)] mb-2 hover:brightness-110 transition-colors duration-150 text-left",
                   },
-                  theme === "dark"
-                    ? h(
-                        "svg",
-                        { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
-                        h("path", { d: "M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" })
-                      )
-                    : h(
-                        "svg",
-                        { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" },
-                        h("path", { d: "M12 2v2", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M12 20v2", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M4.93 4.93l1.41 1.41", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M17.66 17.66l1.41 1.41", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M2 12h2", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M20 12h2", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M4.93 19.07l1.41-1.41", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("path", { d: "M17.66 6.34l1.41-1.41", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round" }),
-                        h("circle", { cx: "12", cy: "12", r: "4", stroke: "currentColor", "stroke-width": "2" })
-                      )
-                  )
+                  "Structura"
+                ),
+                h(
+                  "h1",
+                  { className: "font-display text-3xl md:text-4xl font-bold tracking-tight text-[var(--st-fg)] leading-tight" },
+                  activeToolMeta.label
+                ),
+                h(
+                  "div",
+                  { className: "mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)]" },
+                  STRUCTURA_TAGLINE
+                ),
               ]),
-            h("p", { className: "mt-5 max-w-3xl text-[15px] text-zinc-600 dark:text-zinc-300 font-semibold leading-relaxed" }, activeToolMeta.intro),
+              h(ThemeToggleButton, { theme, setTheme }),
+            ]),
+            h("p", { className: "mt-5 max-w-3xl text-[15px] text-[var(--st-muted)] font-medium leading-relaxed" }, activeToolMeta.intro),
           ]),
 
           h("div", { className: "grid grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)] gap-7 items-start" }, [
-            h("aside", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] p-4 lg:sticky lg:top-6" }, [
-              h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-3 px-2" }, "Tools"),
-              h("nav", { className: "flex flex-col gap-2" }, TOOL_ITEMS.map((tool) =>
+            h(
+              "aside",
+              { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)] p-4 lg:sticky lg:top-6" },
+              [
+                h("div", { className: "text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3 px-2" }, "Tools"),
                 h(
-                  "button",
-                  {
-                    key: tool.id,
-                    type: "button",
-                    onClick: () => navigateToTool(tool.id),
-                    className: classNames(
-                      "w-full text-left rounded-2xl border-l-4 px-3.5 py-3.5 transition-colors",
-                      activeTool === tool.id
-                        ? "bg-zinc-900 border-zinc-900 border-l-zinc-300 text-white shadow-[0_10px_24px_rgba(0,0,0,0.16)] dark:bg-zinc-100 dark:border-zinc-100 dark:border-l-zinc-400 dark:text-zinc-900"
-                        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 border-l-zinc-200 dark:border-l-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
-                    ),
-                  },
-                  [
-                    h("div", { key: "l", className: "text-sm font-extrabold tracking-tight" }, tool.label),
-                    h(
-                      "div",
-                      {
-                        key: "d",
-                        className: classNames(
-                          "mt-1 text-[11px] font-semibold leading-relaxed",
-                          activeTool === tool.id ? "text-zinc-300 dark:text-zinc-600" : "text-zinc-500 dark:text-zinc-400"
-                        ),
-                      },
-                      tool.description
-                    ),
-                  ]
+                  "div",
+                  { className: "flex flex-col gap-5" },
+                  TOOL_GROUPS.map((group, gi) =>
+                    h("div", { key: group.id, className: gi ? "pt-4 mt-1 border-t border-[var(--st-border)]" : "" }, [
+                      h(
+                        "div",
+                        { className: classNames("text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-2 px-2", gi ? "mt-0" : "") },
+                        group.label
+                      ),
+                      h(
+                        "nav",
+                        { className: "flex flex-col gap-2" },
+                        group.toolIds.map((tid) => {
+                          const tool = TOOL_ITEMS.find((t) => t.id === tid);
+                          if (!tool) return null;
+                          return h(
+                            "button",
+                            {
+                              key: tool.id,
+                              type: "button",
+                              onClick: () => navigateToTool(tool.id),
+                              className: classNames(
+                                "structura-nav-btn w-full text-left rounded-2xl border-l-4 px-3.5 py-3.5",
+                                activeTool === tool.id
+                                  ? "border-[var(--st-accent)] bg-[color-mix(in_srgb,var(--st-accent)_10%,var(--st-bg))] text-[var(--st-accent)]"
+                                  : "border-transparent text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))]"
+                              ),
+                            },
+                            [
+                              h(
+                                "div",
+                                { key: "l", className: "text-[15px] font-semibold tracking-tight font-sans" },
+                                tool.label
+                              ),
+                              h(
+                                "div",
+                                {
+                                  key: "d",
+                                  className: classNames(
+                                    "mt-1 text-[11px] font-medium leading-relaxed font-sans",
+                                    activeTool === tool.id ? "text-[var(--st-muted)]" : "text-[var(--st-muted)]"
+                                  ),
+                                },
+                                tool.description
+                              ),
+                            ]
+                          );
+                        })
+                      ),
+                    ])
+                  )
                 )
-              )),
-            ]),
-            h("main", { className: "min-w-0" }, [
-              renderMainToolContent(),
-            ]),
+              ]
+            ),
+            h("main", { className: "min-w-0" }, [renderMainToolContent()]),
           ]),
           pdfModalOpen
             ? h("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4" }, [
                 h("div", { className: "absolute inset-0 bg-black/40 dark:bg-black/50", onClick: () => setPdfModalOpen(false) }),
-                h("div", { className: "relative w-full max-w-md rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-xl p-5" }, [
-                  h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-300 mb-3" }, "Export as PDF"),
-                  h("div", { className: "text-sm text-zinc-900 dark:text-zinc-100 font-semibold" }, "Project name (optional)"),
+                h("div", { className: "relative w-full max-w-md rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] p-5" }, [
+                  h("div", { className: "text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-3" }, "Export as PDF"),
+                  h("div", { className: "text-sm text-[var(--st-fg)] font-semibold" }, "Project name (optional)"),
                   h("input", {
                     value: pdfProjectName,
                     onChange: (e) => setPdfProjectName(e.target.value),
                     placeholder: "e.g., Studio Model Set 01",
                     className:
-                      "mt-3 w-full h-11 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-zinc-300 dark:focus:border-zinc-700",
+                      "mt-3 w-full h-11 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)] placeholder:text-[var(--st-muted)] focus:outline-none focus:border-[var(--st-accent)] transition-colors duration-200",
                   }),
                   h("div", { className: "mt-5 flex gap-3" }, [
                     h(
@@ -4976,7 +5237,7 @@ if (
                         type: "button",
                         onClick: () => setPdfModalOpen(false),
                         className:
-                          "flex-1 h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                          "flex-1 h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
                       },
                       "Cancel"
                     ),
@@ -4986,14 +5247,14 @@ if (
                         type: "button",
                         onClick: exportCurrentToPDF,
                         className:
-                          "flex-1 h-12 rounded-2xl bg-zinc-900 text-white font-extrabold tracking-wide hover:bg-black transition-colors shadow-sm",
+                          "flex-1 h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
                       },
                       "Export PDF"
                     ),
                   ]),
                   h(
                     "div",
-                    { className: "mt-3 text-xs text-zinc-500 dark:text-zinc-400" },
+                    { className: "mt-3 text-xs text-[var(--st-muted)]" },
                     activeTool === "span"
                       ? "PDF includes values and a schematic cross-section diagram."
                       : activeTool === "room"
@@ -5009,30 +5270,21 @@ if (
                                 : activeTool === "siteCoverage"
                                   ? "PDF includes SCR/FAR results, validation notes, and a schematic site plan diagram."
                                   : "PDF is generated as a clean single-page layout."
-                  )
+                  ),
                 ]),
               ])
             : null,
         ]
       ),
-      h(
-        "footer",
-        {
-          className: "mt-auto pt-12 pb-2 text-center",
-        },
-        [
-          h(
-            "div",
-            { className: "text-[12px] font-medium text-zinc-500 dark:text-zinc-400" },
-            "Designed & developed by Melih Özdemir"
-          ),
-          h(
-            "div",
-            { className: "mt-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500" },
-            "Architecture Toolkit — 2025"
-          ),
-        ]
-      ),
+      h("footer", { className: "mt-auto pt-12 pb-6 text-center px-4 border-t border-[var(--st-border)]" }, [
+        h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, "Designed & developed by Melih Özdemir"),
+        h(
+          "div",
+          { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-2xl mx-auto leading-relaxed" },
+          "© 2025 Structura. Designed & developed by Melih Özdemir. All rights reserved."
+        ),
+        h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, "Structura — 2025"),
+      ]),
     ]);
   }
 
