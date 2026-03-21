@@ -260,8 +260,21 @@ if (
     );
   }
 
-  function LandingToolIcon({ toolId }) {
-    const c = { width: 28, height: 28, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", className: "text-[var(--st-accent)]" };
+  function LandingToolIcon({ toolId, category }) {
+    const iconColorClass =
+      category === "compliance"
+        ? "text-[#DC2626]"
+        : category === "environment"
+          ? "text-[#16A34A]"
+          : "text-[#2563EB]";
+    const c = {
+      width: 28,
+      height: 28,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      xmlns: "http://www.w3.org/2000/svg",
+      className: iconColorClass,
+    };
     const stroke = { stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" };
     switch (toolId) {
       case "scale":
@@ -745,28 +758,6 @@ if (
       window.addEventListener("popstate", onPopState);
       return () => window.removeEventListener("popstate", onPopState);
     }, []);
-
-    useEffect(() => {
-      if (activeTool !== "landing") return undefined;
-      let io;
-      const tid = window.setTimeout(() => {
-        const cards = document.querySelectorAll("[data-landing-card]");
-        if (!cards.length) return;
-        io = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((e) => {
-              if (e.isIntersecting) e.target.classList.add("landing-tool-card--visible");
-            });
-          },
-          { rootMargin: "0px 0px -40px 0px", threshold: 0.06 }
-        );
-        cards.forEach((el) => io.observe(el));
-      }, 100);
-      return () => {
-        window.clearTimeout(tid);
-        if (io) io.disconnect();
-      };
-    }, [activeTool]);
 
     function applyTheme(nextTheme) {
       const isDark = nextTheme === "dark";
@@ -5040,59 +5031,83 @@ if (
       ]);
     }
 
-    const landingToolsList = TOOL_GROUPS.flatMap((g) =>
-      g.toolIds.map((tid) => TOOL_ITEMS.find((t) => t.id === tid)).filter(Boolean)
-    );
+    const LANDING_TOOL_ORDER = [
+      "scale",
+      "stair",
+      "ramp",
+      "span",
+      "siteCoverage",
+      "parking",
+      "room",
+      "fireEscape",
+      "daylight",
+      "uValue",
+    ];
+    const LANDING_CATEGORY_BY_ID = TOOL_GROUPS.reduce((acc, g) => {
+      g.toolIds.forEach((tid) => {
+        acc[tid] = g.id;
+      });
+      return acc;
+    }, {});
+    const landingToolsList = LANDING_TOOL_ORDER.map((tid) => {
+      const tool = TOOL_ITEMS.find((t) => t.id === tid);
+      if (!tool) return null;
+      return { tool, category: LANDING_CATEGORY_BY_ID[tid] || "geometry" };
+    }).filter(Boolean);
 
     if (activeTool === "landing") {
       return h("div", { className: "min-h-screen flex flex-col bg-[var(--st-bg)] text-[var(--st-fg)]" }, [
-        h("header", { className: "max-w-6xl mx-auto w-full px-4 pt-6 flex justify-end" }, h(ThemeToggleButton, { theme, setTheme })),
-        h("section", { className: "max-w-6xl mx-auto w-full px-4 pt-4 pb-10 md:pt-10 md:pb-14" }, [
-          h(
-            "h1",
-            {
-              className:
-                "structura-hero-line structura-hero-line--1 font-display text-[clamp(2.5rem,10vw,4.25rem)] md:text-[72px] font-bold tracking-tight leading-[1.02] text-[var(--st-fg)]",
-            },
-            "Structura"
-          ),
-          h(
-            "p",
-            {
-              className: "structura-hero-line structura-hero-line--2 mt-5 text-lg md:text-xl text-[var(--st-muted)] font-medium max-w-2xl leading-snug",
-            },
-            STRUCTURA_TAGLINE
-          ),
-          h(
-            "button",
-            {
-              type: "button",
-              className:
-                "structura-hero-line structura-hero-line--4 mt-10 h-14 px-8 rounded-2xl bg-[var(--st-accent)] text-white font-semibold text-[15px] tracking-wide hover:brightness-110 transition-all duration-150",
-              onClick: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
-            },
-            "Open Toolkit"
-          ),
+        h("div", { className: "structura-hero-shell" }, [
+          h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
+          h("div", { className: "relative z-10 max-w-6xl mx-auto w-full px-4" }, [
+            h("header", { className: "pt-6 flex justify-end" }, h(ThemeToggleButton, { theme, setTheme })),
+            h("section", { className: "pt-4 pb-10 md:pt-10 md:pb-14" }, [
+              h(
+                "h1",
+                {
+                  className:
+                    "structura-hero-line structura-hero-line--1 font-display text-[clamp(2.5rem,10vw,4.25rem)] md:text-[72px] font-bold tracking-tight leading-[1.02] text-[var(--st-fg)]",
+                },
+                "Structura"
+              ),
+              h(
+                "p",
+                {
+                  className: "structura-hero-line structura-hero-line--2 mt-5 text-lg md:text-xl text-[var(--st-muted)] font-medium max-w-2xl leading-snug",
+                },
+                STRUCTURA_TAGLINE
+              ),
+              h(
+                "button",
+                {
+                  type: "button",
+                  className:
+                    "structura-hero-line structura-hero-line--4 mt-10 h-14 px-8 rounded-2xl bg-[var(--st-accent)] text-white font-semibold text-[15px] tracking-wide hover:brightness-110 transition-all duration-150",
+                  onClick: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
+                },
+                "Open Toolkit"
+              ),
+            ]),
+          ]),
         ]),
         h("section", { id: "structura-tool-grid", className: "max-w-6xl mx-auto w-full px-4 pb-16 md:pb-24" }, [
-          h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, "Toolkit"),
+          h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, "All Tools"),
           h(
             "div",
             { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" },
-            landingToolsList.map((tool, idx) =>
+            landingToolsList.map(({ tool, category }, idx) =>
               h(
                 "button",
                 {
                   key: tool.id,
                   type: "button",
-                  "data-landing-card": "1",
-                  style: { transitionDelay: `${Math.min(idx, 14) * 100}ms` },
+                  style: { animationDelay: `${idx * 100}ms` },
                   className:
-                    "landing-tool-card group w-full text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-5 hover:-translate-y-1 hover:border-[var(--st-accent)] transition-[transform,border-color] duration-150",
+                    "landing-tool-card group w-full text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] p-5 hover:border-[var(--st-accent)]",
                   onClick: () => navigateToTool(tool.id),
                 },
-                h("div", { className: "flex gap-4 items-start" }, [
-                  h(LandingToolIcon, { toolId: tool.id }),
+                h("div", { className: "flex gap-4 items-start transition-transform duration-150 ease-out group-hover:-translate-y-1" }, [
+                  h(LandingToolIcon, { toolId: tool.id, category }),
                   h("div", { className: "min-w-0" }, [
                     h(
                       "div",
