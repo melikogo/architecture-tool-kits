@@ -132,6 +132,37 @@ body {
   }
 }
 
+/* Landing About — fade-in on scroll */
+.structura-about-col {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+.structura-about-col[data-about-col="2"] {
+  transition-delay: 90ms;
+}
+.structura-about-col[data-about-col="3"] {
+  transition-delay: 180ms;
+}
+.structura-about-col.structura-about-col--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .structura-about-col {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .structura-about-col[data-about-col="2"],
+  .structura-about-col[data-about-col="3"] {
+    transition-delay: 0ms;
+  }
+}
+
 /* Sidebar row hover */
 .structura-nav-btn {
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;

@@ -759,6 +759,31 @@ if (
       return () => window.removeEventListener("popstate", onPopState);
     }, []);
 
+    useEffect(() => {
+      if (activeTool !== "landing") return undefined;
+      let io;
+      const tid = window.setTimeout(() => {
+        const cols = document.querySelectorAll("[data-about-col]");
+        if (!cols.length) return;
+        io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target.classList.add("structura-about-col--visible");
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: "0px 0px -8% 0px", threshold: 0.08 }
+        );
+        cols.forEach((el) => io.observe(el));
+      }, 50);
+      return () => {
+        window.clearTimeout(tid);
+        if (io) io.disconnect();
+      };
+    }, [activeTool]);
+
     function applyTheme(nextTheme) {
       const isDark = nextTheme === "dark";
       document.documentElement.classList.toggle("dark", isDark);
@@ -5090,6 +5115,67 @@ if (
             ]),
           ]),
         ]),
+        h(
+          "section",
+          {
+            id: "structura-about",
+            "aria-labelledby": "structura-about-heading",
+            className: "max-w-6xl mx-auto w-full px-4 py-14 md:py-20 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+          },
+          [
+            h("h2", { id: "structura-about-heading", className: "sr-only" }, "About Structura"),
+            h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-14" }, [
+              h(
+                "div",
+                {
+                  "data-about-col": "1",
+                  className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
+                },
+                [
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "01"),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "Built for the field"),
+                  h(
+                    "p",
+                    { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
+                    "Architects and engineers spend too much time on repetitive calculations. Structura brings the most-used design checks into one clean, fast interface — no login, no setup, no noise."
+                  ),
+                ]
+              ),
+              h(
+                "div",
+                {
+                  "data-about-col": "2",
+                  className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
+                },
+                [
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "02"),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "10 professional tools"),
+                  h(
+                    "p",
+                    { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
+                    "From scale conversions and stair geometry to fire escape compliance and thermal performance — every tool is built around real project workflows."
+                  ),
+                ]
+              ),
+              h(
+                "div",
+                {
+                  "data-about-col": "3",
+                  className: "structura-about-col pt-6 md:pt-8 border-t border-[var(--st-border)]",
+                },
+                [
+                  h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, "03"),
+                  h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, "Students to seniors"),
+                  h(
+                    "p",
+                    { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" },
+                    "Whether you're a first-year architecture student or a licensed engineer, Structura gives you instant answers to the questions you face every day on site and in studio."
+                  ),
+                ]
+              ),
+            ]),
+          ]
+        ),
         h("section", { id: "structura-tool-grid", className: "max-w-6xl mx-auto w-full px-4 pb-16 md:pb-24" }, [
           h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, "All Tools"),
           h(
