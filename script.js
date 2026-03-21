@@ -443,6 +443,12 @@ if (
         description: "Thermal transmittance and insulation checker",
         intro: "Build layer stacks, compute U-value from resistances, and check indicative ASHRAE 90.1 / EU EPBD limits by climate.",
       },
+      {
+        id: "siteCoverage",
+        label: "Site Coverage Calculator",
+        description: "Plot ratio, coverage and floor area calculator",
+        intro: "Relate plot area, SCR, FAR, and storey count to footprint, total GFA, open space, and simple compliance checks.",
+      },
     ];
 
     const TOOL_PATHS = {
@@ -455,6 +461,7 @@ if (
       daylight: "/daylight-calculator",
       fireEscape: "/fire-escape-calculator",
       uValue: "/u-value-calculator",
+      siteCoverage: "/site-coverage-calculator",
     };
 
     function pathToTool(pathname) {
@@ -467,6 +474,7 @@ if (
       if (p === "/daylight-calculator") return "daylight";
       if (p === "/fire-escape-calculator") return "fireEscape";
       if (p === "/u-value-calculator") return "uValue";
+      if (p === "/site-coverage-calculator") return "siteCoverage";
       return "scale";
     }
 
@@ -553,6 +561,12 @@ if (
     const [uLayers, setULayers] = useState(() => [
       { uid: "u_layer_0", materialId: "concrete", thicknessMm: "100" },
     ]);
+
+    const [sitePlotM2, setSitePlotM2] = useState("1000");
+    const [siteScrStr, setSiteScrStr] = useState("0.4");
+    const [siteFarStr, setSiteFarStr] = useState("1.2");
+    const [siteFloorsStr, setSiteFloorsStr] = useState("3");
+    const [siteBasement, setSiteBasement] = useState(false);
 
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
@@ -1188,6 +1202,68 @@ if (
       setULayers((prev) => prev.map((l) => (l.uid === uid ? { ...l, ...patch } : l)));
     }
 
+    const siteCoverageResult = useMemo(() => {
+      const plot = Number(sitePlotM2);
+      const scrRaw = Number(siteScrStr);
+      const farRaw = Number(siteFarStr);
+      const floorsN = Number(siteFloorsStr);
+      if (!Number.isFinite(plot) || plot <= 0) return null;
+      if (!Number.isFinite(scrRaw) || scrRaw < 0 || scrRaw > 1) return null;
+      if (!Number.isFinite(farRaw) || farRaw < 0 || farRaw > 10) return null;
+      if (!Number.isFinite(floorsN) || floorsN < 1 || !Number.isInteger(floorsN)) return null;
+
+      const scr = Math.round(scrRaw * 1000) / 1000;
+      const far = Math.round(farRaw * 1000) / 1000;
+
+      const maxFootprintM2 = Math.round(plot * scr * 10) / 10;
+      const maxTotalGfaM2 = Math.round(plot * far * 10) / 10;
+      const gfaDemandM2 = Math.round(maxFootprintM2 * floorsN * 10) / 10;
+      const maxGfaPerFloorM2 = Math.round(Math.min(maxFootprintM2, maxTotalGfaM2 / floorsN) * 10) / 10;
+      const remainingPlotM2 = Math.round((plot - maxFootprintM2) * 10) / 10;
+      const openSpaceRatioPct = Math.round((1 - scr) * 100 * 10) / 10;
+
+      const exceedsFar = gfaDemandM2 > maxTotalGfaM2 + 1e-6;
+      const headroomM2 = Math.round((maxTotalGfaM2 - gfaDemandM2) * 10) / 10;
+      const overGfaM2 = Math.round((gfaDemandM2 - maxTotalGfaM2) * 10) / 10;
+      const maxFloorsAtScr = scr > 1e-9 ? far / scr : Infinity;
+      const floorsOver = exceedsFar && maxFootprintM2 > 0 ? Math.round(((gfaDemandM2 - maxTotalGfaM2) / maxFootprintM2) * 10) / 10 : 0;
+
+      let complianceLevel = "green";
+      let complianceLabel = "Inputs consistent and buildable (indicative)";
+      if (exceedsFar) {
+        complianceLevel = "red";
+        complianceLabel = `Not compliant — ${formatSmartNumber(overGfaM2)} m² over FAR cap (≈ ${formatSmartNumber(floorsOver)} floor-equiv. at max footprint)`;
+      } else if (gfaDemandM2 > maxTotalGfaM2 * 0.85 + 1e-6) {
+        complianceLevel = "yellow";
+        complianceLabel = `Near FAR limit — only ${formatSmartNumber(headroomM2)} m² GFA headroom before exceed`;
+      }
+
+      const basementAreaM2 = siteBasement ? maxFootprintM2 : null;
+
+      return {
+        plotM2: plot,
+        scr,
+        far,
+        floors: floorsN,
+        basementIncluded: siteBasement,
+        maxFootprintM2,
+        maxTotalGfaM2,
+        maxGfaPerFloorM2,
+        remainingPlotM2,
+        openSpaceRatioPct,
+        gfaDemandM2,
+        exceedsFar,
+        headroomM2,
+        overGfaM2,
+        maxFloorsAtScr,
+        floorsOver,
+        complianceLevel,
+        complianceLabel,
+        basementAreaM2,
+        footprintPct: Math.round(scr * 1000) / 10,
+      };
+    }, [sitePlotM2, siteScrStr, siteFarStr, siteFloorsStr, siteBasement]);
+
     const computed = useMemo(() => {
       if (tab === "convert") {
         return {
@@ -1553,6 +1629,29 @@ if (
         }
         return;
       }
+      if (activeTool === "siteCoverage") {
+        const text = formatSiteCoverageCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "span") {
         if (!spanResult) {
           setStatus({ state: "warn", text: "Enter a valid span length." });
@@ -1872,6 +1971,43 @@ if (
       return lines.join("\n");
     }
 
+    function formatSiteCoverageCopyText() {
+      const lines = ["Site Coverage Calculator", "", `Timestamp: ${new Date().toLocaleString()}`, ""];
+      if (!siteCoverageResult) {
+        lines.push("Enter valid plot area, SCR (0–1), FAR (0–10), and whole number of floors (≥ 1).");
+        return lines.join("\n");
+      }
+      const r = siteCoverageResult;
+      lines.push("Inputs");
+      lines.push(`- Total plot area: ${formatSmartNumber(r.plotM2)} m²`);
+      lines.push(`- Site coverage ratio (SCR): ${formatSmartNumber(r.scr)}`);
+      lines.push(`- Floor area ratio (FAR): ${formatSmartNumber(r.far)}`);
+      lines.push(`- Number of floors: ${r.floors}`);
+      lines.push(`- Basement included: ${r.basementIncluded ? "Yes" : "No"}`);
+      lines.push("");
+      lines.push("Auto-calculated (indicative)");
+      lines.push(`- Maximum footprint area: ${formatSmartNumber(r.maxFootprintM2)} m²`);
+      lines.push(`- Maximum total floor area (GFA cap): ${formatSmartNumber(r.maxTotalGfaM2)} m²`);
+      lines.push(`- Maximum floor area per floor: ${formatSmartNumber(r.maxGfaPerFloorM2)} m²`);
+      lines.push(`- Remaining plot area (open / green): ${formatSmartNumber(r.remainingPlotM2)} m²`);
+      lines.push(`- Open space ratio (ground): ${formatSmartNumber(r.openSpaceRatioPct)} %`);
+      lines.push(`- GFA demand (footprint × floors): ${formatSmartNumber(r.gfaDemandM2)} m²`);
+      if (r.basementIncluded && r.basementAreaM2 != null) {
+        lines.push(`- Basement footprint (below grade): ${formatSmartNumber(r.basementAreaM2)} m²`);
+      }
+      lines.push("");
+      lines.push("Validation");
+      lines.push(`- Status: ${r.complianceLabel}`);
+      if (r.exceedsFar) {
+        lines.push(`- Over FAR by: ${formatSmartNumber(r.overGfaM2)} m²`);
+      } else if (r.complianceLevel === "yellow") {
+        lines.push(`- GFA headroom: ${formatSmartNumber(r.headroomM2)} m²`);
+      }
+      lines.push("");
+      lines.push("Indicative planning check only — verify with local zoning.");
+      return lines.join("\n");
+    }
+
     function buildPDFLines(projectName) {
       if (activeTool === "uValue") {
         const timestamp = new Date().toLocaleString();
@@ -2057,6 +2193,45 @@ if (
         }
         return lines;
       }
+      if (activeTool === "siteCoverage") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Site Coverage Calculator (indicative)");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!siteCoverageResult) {
+          lines.push("No valid inputs.");
+          return lines;
+        }
+        const r = siteCoverageResult;
+        lines.push("Inputs");
+        lines.push(`- Total plot area: ${formatSmartNumber(r.plotM2)} m²`);
+        lines.push(`- SCR: ${formatSmartNumber(r.scr)}`);
+        lines.push(`- FAR: ${formatSmartNumber(r.far)}`);
+        lines.push(`- Floors: ${r.floors}`);
+        lines.push(`- Basement: ${r.basementIncluded ? "Yes" : "No"}`);
+        lines.push("");
+        lines.push("Results");
+        lines.push(`- Max footprint: ${formatSmartNumber(r.maxFootprintM2)} m²`);
+        lines.push(`- Max total GFA: ${formatSmartNumber(r.maxTotalGfaM2)} m²`);
+        lines.push(`- Max GFA per floor: ${formatSmartNumber(r.maxGfaPerFloorM2)} m²`);
+        lines.push(`- Remaining plot (open): ${formatSmartNumber(r.remainingPlotM2)} m²`);
+        lines.push(`- Open space ratio: ${formatSmartNumber(r.openSpaceRatioPct)} %`);
+        lines.push(`- GFA demand (footprint × floors): ${formatSmartNumber(r.gfaDemandM2)} m²`);
+        if (r.basementIncluded && r.basementAreaM2 != null) {
+          lines.push(`- Basement area: ${formatSmartNumber(r.basementAreaM2)} m²`);
+        }
+        lines.push("");
+        lines.push("Validation");
+        lines.push(`- ${r.complianceLabel}`);
+        if (r.exceedsFar) {
+          lines.push(`- Over FAR: ${formatSmartNumber(r.overGfaM2)} m²`);
+        }
+        lines.push("");
+        lines.push("Verify with local codes and plot geometry.");
+        return lines;
+      }
 
       const timestamp = new Date().toLocaleString();
       const scale = `1:${denomSafe}`;
@@ -2124,7 +2299,8 @@ if (
           activeTool === "parking" ||
           activeTool === "daylight" ||
           activeTool === "fireEscape" ||
-          activeTool === "uValue"
+          activeTool === "uValue" ||
+          activeTool === "siteCoverage"
             ? 520
             : 780;
         lines.forEach((line) => {
@@ -2304,6 +2480,53 @@ if (
           }
         }
 
+        if (activeTool === "siteCoverage" && siteCoverageResult) {
+          y += 10;
+          if (y < 640) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("Site plan (schematic — area proportions)", marginX, y);
+            y += 14;
+            doc.setFont("helvetica", "normal");
+            const sr = siteCoverageResult;
+            const sx = marginX;
+            const sy = y;
+            const pw = 200;
+            const ph = 120;
+            const sf = Math.sqrt(Math.max(0, Math.min(1, sr.scr)));
+            const fw = pw * sf;
+            const fh = ph * sf;
+            const fx = sx + (pw - fw) / 2;
+            const fy = sy + (ph - fh) / 2;
+            doc.setDrawColor(70);
+            doc.setFillColor(209, 250, 229);
+            doc.rect(sx, sy, pw, ph, "FD");
+            if (fw > 0.5 && fh > 0.5) {
+              doc.setFillColor(180, 180, 190);
+              doc.rect(fx, fy, fw, fh, "FD");
+            }
+            doc.setDrawColor(60);
+            doc.rect(sx, sy, pw, ph, "S");
+            doc.setFontSize(7);
+            doc.setTextColor(30);
+            doc.text(`Open ${formatSmartNumber(sr.openSpaceRatioPct)}%`, sx + 4, sy + 10);
+            if (fw > 12 && fh > 12) {
+              doc.text(`Footprint ${formatSmartNumber(sr.footprintPct)}%`, fx + fw / 2 - 22, fy + fh / 2 + 2);
+            }
+            if (sr.basementIncluded && fw > 4) {
+              const bh = 14;
+              doc.setFillColor(148, 163, 184);
+              doc.rect(fx, sy + ph + 4, fw, bh, "FD");
+              doc.setDrawColor(80);
+              doc.rect(fx, sy + ph + 4, fw, bh, "S");
+              doc.text("Basement (footprint)", fx + 4, sy + ph + 4 + bh / 2 + 2);
+              y += bh + 6;
+            }
+            doc.setTextColor(0);
+            y += ph + 18;
+          }
+        }
+
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const suffix =
@@ -2319,7 +2542,9 @@ if (
                     ? "fire-escape-calculator"
                     : activeTool === "uValue"
                       ? "u-value-calculator"
-                      : "scale-converter";
+                      : activeTool === "siteCoverage"
+                        ? "site-coverage-calculator"
+                        : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -3826,6 +4051,338 @@ if (
         ]);
       }
 
+      if (activeTool === "siteCoverage") {
+        const sr = siteCoverageResult;
+        const siteBadgeClass =
+          sr && sr.complianceLevel === "green"
+            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            : sr && sr.complianceLevel === "yellow"
+              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              : sr
+                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
+                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+
+        const plotX = 28;
+        const plotY = 24;
+        const plotW = 264;
+        const plotH = 118;
+        const sf = sr ? Math.sqrt(Math.max(0, Math.min(1, sr.scr))) : 0;
+        const fpW = plotW * sf;
+        const fpH = plotH * sf;
+        const fpX = plotX + (plotW - fpW) / 2;
+        const fpY = plotY + (plotH - fpH) / 2;
+        const basementH = 22;
+
+        const siteSvg = sr
+          ? h(
+              "svg",
+              {
+                viewBox: "0 0 320 200",
+                className:
+                  "w-full h-auto max-h-64 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-800 dark:text-zinc-100",
+                "aria-hidden": true,
+              },
+              [
+                h("defs", {}, [
+                  h(
+                    "pattern",
+                    { id: "siteOpenPattern", patternUnits: "userSpaceOnUse", width: 8, height: 8 },
+                    [
+                      h("path", {
+                        d: "M0 8 L8 0 M-2 2 L2 -2 M6 10 L10 6",
+                        className: "stroke-emerald-300/50 dark:stroke-emerald-600/40",
+                        strokeWidth: 1,
+                        fill: "none",
+                      }),
+                    ]
+                  ),
+                ]),
+                h("rect", {
+                  x: plotX,
+                  y: plotY,
+                  width: plotW,
+                  height: plotH,
+                  rx: 3,
+                  className: "fill-emerald-100/95 dark:fill-emerald-950/50 stroke-zinc-400 dark:stroke-zinc-500",
+                  strokeWidth: 1.5,
+                }),
+                h("rect", {
+                  x: plotX,
+                  y: plotY,
+                  width: plotW,
+                  height: plotH,
+                  rx: 3,
+                  fill: "url(#siteOpenPattern)",
+                  className: "stroke-none",
+                  opacity: 0.85,
+                }),
+                fpW > 1 && fpH > 1
+                  ? h("rect", {
+                      x: fpX,
+                      y: fpY,
+                      width: Math.max(fpW, 2),
+                      height: Math.max(fpH, 2),
+                      rx: 2,
+                      className: "fill-zinc-400/90 dark:fill-zinc-500/85 stroke-zinc-600 dark:stroke-zinc-400",
+                      strokeWidth: 1.2,
+                    })
+                  : null,
+                h(
+                  "text",
+                  {
+                    x: plotX + 8,
+                    y: plotY + 16,
+                    className: "fill-emerald-900 dark:fill-emerald-200 text-[9px] font-extrabold",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  `Open ${formatSmartNumber(sr.openSpaceRatioPct)}%`
+                ),
+                fpW > 16 && fpH > 14
+                  ? h(
+                      "text",
+                      {
+                        x: fpX + Math.max(fpW, 2) / 2,
+                        y: fpY + Math.max(fpH, 2) / 2 + 3,
+                        textAnchor: "middle",
+                        className: "fill-zinc-950 dark:fill-zinc-50 text-[9px] font-extrabold",
+                        style: { fontFamily: "system-ui, sans-serif", textShadow: "0 0 4px rgba(255,255,255,0.9)" },
+                      },
+                      `Building ${formatSmartNumber(sr.footprintPct)}%`
+                    )
+                  : fpW > 1
+                    ? h(
+                        "text",
+                        {
+                          x: fpX + Math.max(fpW, 2) / 2,
+                          y: fpY + Math.max(fpH, 2) / 2 + 3,
+                          textAnchor: "middle",
+                          className: "fill-zinc-950 dark:fill-zinc-50 text-[8px] font-extrabold",
+                          style: { fontFamily: "system-ui, sans-serif" },
+                        },
+                        `${formatSmartNumber(sr.footprintPct)}%`
+                      )
+                    : null,
+                sr.basementIncluded
+                  ? h("g", { key: "basement" }, [
+                      h("rect", {
+                        x: fpX,
+                        y: plotY + plotH + 6,
+                        width: Math.max(fpW, 2),
+                        height: basementH,
+                        rx: 2,
+                        className: "fill-slate-400/85 dark:fill-slate-600/80 stroke-slate-600 dark:stroke-slate-400",
+                        strokeWidth: 1,
+                      }),
+                      h(
+                        "text",
+                        {
+                          x: fpX + Math.max(fpW, 2) / 2,
+                          y: plotY + plotH + 6 + basementH / 2 + 3,
+                          textAnchor: "middle",
+                          className: "fill-zinc-950 dark:fill-zinc-50 text-[8px] font-extrabold",
+                          style: { fontFamily: "system-ui, sans-serif" },
+                        },
+                        `Basement ${formatSmartNumber(sr.basementAreaM2 ?? 0)} m²`
+                      ),
+                    ])
+                  : null,
+                h(
+                  "text",
+                  {
+                    x: plotX + plotW / 2,
+                    y: sr.basementIncluded ? plotY + plotH + basementH + 28 : plotY + plotH + 22,
+                    textAnchor: "middle",
+                    className: "fill-current text-[8px] font-bold opacity-70",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  "Plan proportions from SCR (indicative)"
+                ),
+              ]
+            )
+          : h(
+              "div",
+              {
+                className:
+                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+              },
+              "Enter a valid plot, SCR (0–1), FAR (0–10), and floor count to preview the site plan."
+            );
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Site Coverage Calculator",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: "Plot & ratios",
+                hint: "SCR = max footprint / plot; FAR = max total GFA / plot",
+              }),
+              h(Field, {
+                label: "Total plot area (m²)",
+                children: h(InputBase, {
+                  value: sitePlotM2,
+                  onChange: setSitePlotM2,
+                  placeholder: "e.g., 1000",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Site coverage ratio — SCR (0.00 – 1.00)",
+                children: h(InputBase, {
+                  value: siteScrStr,
+                  onChange: setSiteScrStr,
+                  placeholder: "e.g., 0.4",
+                  type: "number",
+                  step: "0.01",
+                  min: 0,
+                  max: 1,
+                }),
+              }),
+              h(Field, {
+                label: "Floor area ratio — FAR (0.00 – 10.00)",
+                children: h(InputBase, {
+                  value: siteFarStr,
+                  onChange: setSiteFarStr,
+                  placeholder: "e.g., 1.2",
+                  type: "number",
+                  step: "0.1",
+                  min: 0,
+                  max: 10,
+                }),
+              }),
+              h(Field, {
+                label: "Number of floors (whole number, ≥ 1)",
+                children: h(InputBase, {
+                  value: siteFloorsStr,
+                  onChange: setSiteFloorsStr,
+                  placeholder: "e.g., 3",
+                  type: "number",
+                  step: 1,
+                  min: 1,
+                }),
+              }),
+              h(SectionTitle, { label: "Basement", hint: "Below-grade footprint matches max footprint when included" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: siteBasement === false, onClick: () => setSiteBasement(false) }, "No"),
+                h(ValueButton, { active: siteBasement === true, onClick: () => setSiteBasement(true) }, "Yes"),
+              ]),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                },
+                "Checks assume a uniform footprint on each floor at max SCR. FAR cap applies to total GFA; basement policy varies by code — shown for reference only."
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Auto-calculate",
+            hint: "Footprint, GFA & open space",
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h(
+                "div",
+                { className: classNames("inline-flex items-center min-h-9 px-4 py-2 rounded-full text-[10px] font-extrabold tracking-[.12em] uppercase", siteBadgeClass) },
+                sr ? sr.complianceLabel : "Enter valid inputs"
+              ),
+              siteSvg,
+              sr
+                ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
+                    h(ValueBlock, {
+                      label: "Maximum footprint area",
+                      valueText: formatSmartNumber(sr.maxFootprintM2),
+                      unitText: "m²",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Maximum total floor area",
+                      valueText: formatSmartNumber(sr.maxTotalGfaM2),
+                      unitText: "m²",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Maximum floor area per floor",
+                      valueText: formatSmartNumber(sr.maxGfaPerFloorM2),
+                      unitText: "m²",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "Remaining plot area (open)",
+                      valueText: formatSmartNumber(sr.remainingPlotM2),
+                      unitText: "m²",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "Open space ratio",
+                      valueText: formatSmartNumber(sr.openSpaceRatioPct),
+                      unitText: "%",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "GFA demand (footprint × floors)",
+                      valueText: formatSmartNumber(sr.gfaDemandM2),
+                      unitText: "m²",
+                      big: false,
+                    }),
+                  ])
+                : null,
+              sr && sr.basementIncluded && sr.basementAreaM2 != null
+                ? h("div", { className: "rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/40 px-4 py-3" }, [
+                    h("div", { className: "text-[10px] font-extrabold tracking-[.2em] uppercase text-slate-600 dark:text-slate-400 mb-1" }, "Basement (below grade)"),
+                    h("div", { className: "text-lg font-black text-zinc-900 dark:text-zinc-50" }, `${formatSmartNumber(sr.basementAreaM2)} m²`),
+                  ])
+                : null,
+              sr && sr.exceedsFar
+                ? h("div", { className: "rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 px-4 py-3 text-sm font-semibold text-red-950 dark:text-red-100" }, [
+                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-red-800 dark:text-red-300 mr-2" }, "FAR exceedance"),
+                    `Reduce footprint, floors, or increase allowable FAR — currently ${formatSmartNumber(sr.overGfaM2)} m² over the GFA cap.`,
+                  ])
+                : null,
+              sr && sr.complianceLevel === "yellow"
+                ? h("div", { className: "rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm font-semibold text-amber-950 dark:text-amber-100 space-y-2" }, [
+                    h("div", {}, [
+                      h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, "Headroom"),
+                      `${formatSmartNumber(sr.headroomM2)} m² of GFA capacity remaining before footprint × floors would exceed FAR.`,
+                    ]),
+                    sr.scr > 1e-6 && Number.isFinite(sr.maxFloorsAtScr)
+                      ? h(
+                          "div",
+                          { className: "text-xs font-semibold text-amber-900/90 dark:text-amber-200/95" },
+                          `At full SCR, FAR allows ≈ ${formatSmartNumber(sr.maxFloorsAtScr)} equal storeys of max footprint (you have ${sr.floors}).`
+                        )
+                      : null,
+                  ])
+                : null,
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       if (activeTool === "span") {
         const SPAN_SYSTEM_OPTIONS = [
           { value: "rc_flat", label: "Reinforced Concrete Flat Slab" },
@@ -4449,7 +5006,9 @@ if (
                               ? "PDF includes all values and a schematic floor plan with travel path."
                               : activeTool === "uValue"
                                 ? "PDF includes layer build-up, U/R values, and a schematic layer diagram."
-                                : "PDF is generated as a clean single-page layout."
+                                : activeTool === "siteCoverage"
+                                  ? "PDF includes SCR/FAR results, validation notes, and a schematic site plan diagram."
+                                  : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
