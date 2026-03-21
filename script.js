@@ -29,7 +29,7 @@ if (
     mall: { key: "mall", label: "Shopping Mall", mult: 1.08 },
   };
 
-  /** Turkish code: min window/floor 10%. EN 17037 indicative DF minimums by space type (side-lit estimate). */
+  /** EN 17037 minimum daylight factor (%): residential-type 2%, workspaces 3%. IES (LM-83 / daylight metrics) as secondary reference in UI. */
   const DAYLIGHT_ROOM_TYPES = [
     { id: "bedroom", label: "Bedroom", enDfMin: 2 },
     { id: "living", label: "Living Room", enDfMin: 2 },
@@ -46,7 +46,18 @@ if (
     west: { label: "West", sky: 0.93, pen: 0.96 },
   };
 
-  const TURKISH_WFR_MIN_PCT = 10;
+  /** IBC 2021 indicative — max travel distance (m), no sprinkler / with sprinkler. */
+  const FIRE_BUILDING_TYPES = [
+    { id: "residential", label: "Residential", maxNoSprinkler: 38, maxSprinkler: 61 },
+    { id: "office", label: "Office", maxNoSprinkler: 61, maxSprinkler: 91 },
+    { id: "school", label: "School / Education", maxNoSprinkler: 46, maxSprinkler: 61 },
+    { id: "hospital", label: "Hospital", maxNoSprinkler: 46, maxSprinkler: 61 },
+    { id: "mall", label: "Shopping Mall", maxNoSprinkler: 61, maxSprinkler: 91 },
+    { id: "industrial", label: "Industrial", maxNoSprinkler: 46, maxSprinkler: 76 },
+  ];
+
+  const FIRE_AREA_TWO_EXIT_M2 = 185;
+  const FIRE_EXIT_WIDTH_M = 0.91;
 
   const ROOM_PROGRAM_TYPES = [
     { id: "bedroom", name: "Bedroom", minAreaM2: 12, minDimM: 3.0 },
@@ -361,8 +372,14 @@ if (
       {
         id: "daylight",
         label: "Daylight Calculator",
-        description: "Natural light compliance checker",
-        intro: "Check window-to-floor ratio against Turkish code and compare an indicative daylight factor to EN 17037 targets.",
+        description: "EN 17037 & IES daylight compliance",
+        intro: "Assess indicative daylight factor against EN 17037; IES daylight metrics as secondary reference.",
+      },
+      {
+        id: "fireEscape",
+        label: "Fire Escape Calculator",
+        description: "Exit distance and evacuation compliance",
+        intro: "Compare travel distance and exit counts to IBC 2021 indicative limits for common occupancies.",
       },
     ];
 
@@ -374,6 +391,7 @@ if (
       room: "/room-program",
       parking: "/parking-calculator",
       daylight: "/daylight-calculator",
+      fireEscape: "/fire-escape-calculator",
     };
 
     function pathToTool(pathname) {
@@ -384,6 +402,7 @@ if (
       if (p === "/room-program") return "room";
       if (p === "/parking-calculator") return "parking";
       if (p === "/daylight-calculator") return "daylight";
+      if (p === "/fire-escape-calculator") return "fireEscape";
       return "scale";
     }
 
@@ -457,6 +476,13 @@ if (
     const [daylightWindowM2, setDaylightWindowM2] = useState("3");
     const [daylightDepthM, setDaylightDepthM] = useState("5");
     const [daylightFacade, setDaylightFacade] = useState("south");
+
+    const [fireBuildingType, setFireBuildingType] = useState("office");
+    const [fireFloorM2, setFireFloorM2] = useState("200");
+    const [fireNumExits, setFireNumExits] = useState("2");
+    const [fireTravelM, setFireTravelM] = useState("45");
+    const [fireFloors, setFireFloors] = useState("1");
+    const [fireSprinkler, setFireSprinkler] = useState(true);
 
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
@@ -864,58 +890,50 @@ if (
       );
       const penetrationM = Math.round(penRaw * 10) / 10;
 
-      const turkishOk = wfrPct + 1e-9 >= TURKISH_WFR_MIN_PCT;
       const enDfMin = room.enDfMin;
       const enOk = dfPct + 1e-9 >= enDfMin;
+      const lowBand = enDfMin * 0.8;
 
-      let complianceLevel = "both";
-      let complianceLabel = "Meets Turkish code and EN 17037 (indicative)";
-      if (turkishOk && enOk) {
-        complianceLevel = "both";
-        complianceLabel = "Meets Turkish code and EN 17037 (indicative)";
-      } else if (turkishOk && !enOk) {
-        complianceLevel = "turkish_only";
-        complianceLabel = "Meets Turkish code; EN 17037 target not met";
-      } else if (!turkishOk && enOk) {
-        complianceLevel = "neither";
-        complianceLabel = "Fails Turkish code (min WFR); EN 17037 DF target met (indicative)";
+      let complianceLevel = "green";
+      let complianceLabel = "Meets EN 17037 (indicative)";
+      if (dfPct + 1e-9 >= enDfMin) {
+        complianceLevel = "green";
+        complianceLabel = "Meets EN 17037 (indicative)";
+      } else if (dfPct + 1e-9 >= lowBand) {
+        complianceLevel = "yellow";
+        complianceLabel = "Below EN 17037 minimum — within 20% of threshold (indicative)";
       } else {
-        complianceLevel = "neither";
-        complianceLabel = "Does not meet Turkish code and EN 17037 (indicative)";
+        complianceLevel = "red";
+        complianceLabel = "Does not meet EN 17037 (indicative)";
       }
 
       const recommendations = [];
-      if (!turkishOk) {
-        const needWinT = (TURKISH_WFR_MIN_PCT / 100) * floor - win;
-        if (needWinT > 0.005) {
-          recommendations.push(
-            `Increase window area by at least ${formatSmartNumber(needWinT)} m² to reach Turkish code minimum (${TURKISH_WFR_MIN_PCT}% window-to-floor).`
-          );
-        }
-      }
-      if (!enOk) {
+      if (complianceLevel === "red" || (complianceLevel === "yellow" && !enOk)) {
         if (dfPct > 0.05) {
           const targetWfr = wfrPct * (enDfMin / dfPct);
           const needWinE = (targetWfr / 100) * floor - win;
           if (needWinE > 0.05) {
             recommendations.push(
-              `Increase window area by about ${formatSmartNumber(needWinE)} m² to approach EN 17037 ${formatSmartNumber(enDfMin)}% DF target for ${room.label} (indicative).`
+              `Increase window area by about ${formatSmartNumber(needWinE)} m² toward EN 17037 ${formatSmartNumber(enDfMin)}% DF for ${room.label} (IES-compatible metrics as secondary check).`
             );
           } else {
             recommendations.push(
-              `Consider rooflights, clerestory glazing, or reducing room depth — indicative DF is ${formatSmartNumber(dfPct)}%, target ${formatSmartNumber(enDfMin)}% for ${room.label}.`
+              `Consider rooflights, clerestory glazing, or reducing room depth — indicative DF ${formatSmartNumber(dfPct)}% vs EN 17037 ${formatSmartNumber(enDfMin)}% for ${room.label}.`
             );
           }
         } else {
           recommendations.push(
-            `Increase window area substantially — indicative DF is below ${formatSmartNumber(enDfMin)}% target for ${room.label}.`
+            `Increase window area substantially — indicative DF is below EN 17037 ${formatSmartNumber(enDfMin)}% for ${room.label}.`
           );
         }
       }
-      if ((!turkishOk || !enOk) && depth > penetrationM * 1.12) {
+      if (complianceLevel !== "green" && depth > penetrationM * 1.12) {
         recommendations.push(
-          `Consider rooflights or light shelves — daylight penetration (${formatSmartNumber(penetrationM)} m) is limited relative to room depth (${formatSmartNumber(depth)} m).`
+          `Consider rooflights or light shelves — penetration (${formatSmartNumber(penetrationM)} m) is limited vs depth (${formatSmartNumber(depth)} m); verify with IES LM-83 / spatial daylight metrics where applicable.`
         );
+      }
+      if (recommendations.length === 0 && complianceLevel === "green") {
+        recommendations.push("No changes indicated for EN 17037 indicative targets; confirm with project-specific simulation.");
       }
 
       return {
@@ -928,13 +946,86 @@ if (
         dfPct,
         penetrationM,
         enDfMin,
-        turkishOk,
         enOk,
         complianceLevel,
         complianceLabel,
         recommendations,
       };
     }, [daylightRoomType, daylightFloorM2, daylightWindowM2, daylightDepthM, daylightFacade]);
+
+    const fireEscapeResult = useMemo(() => {
+      const floor = Number(fireFloorM2);
+      const travel = Number(fireTravelM);
+      const exitsN = Number(fireNumExits);
+      const floors = Number(fireFloors);
+      if (!Number.isFinite(floor) || floor <= 0) return null;
+      if (!Number.isFinite(travel) || travel < 0) return null;
+      if (!Number.isFinite(exitsN) || exitsN < 0 || !Number.isInteger(exitsN)) return null;
+      if (!Number.isFinite(floors) || floors < 1 || !Number.isInteger(floors)) return null;
+
+      const bt = FIRE_BUILDING_TYPES.find((b) => b.id === fireBuildingType) || FIRE_BUILDING_TYPES[1];
+      const maxTravelRaw = fireSprinkler ? bt.maxSprinkler : bt.maxNoSprinkler;
+      const maxTravelM = Math.round(maxTravelRaw * 10) / 10;
+
+      const requiredMinExits = floor > FIRE_AREA_TWO_EXIT_M2 ? 2 : 1;
+
+      const travelOk = travel <= maxTravelM + 1e-9;
+      const exitsOk = exitsN >= requiredMinExits;
+
+      const exitWidthTotalMin = Math.round(requiredMinExits * FIRE_EXIT_WIDTH_M * 10) / 10;
+      const providedExitWidthMin = Math.round(exitsN * FIRE_EXIT_WIDTH_M * 10) / 10;
+
+      const travelRatio = maxTravelM > 0 ? travel / maxTravelM : 0;
+      const marginalTravel = travelOk && travelRatio >= 0.9;
+      const marginalExits = exitsOk && exitsN === requiredMinExits && requiredMinExits >= 2;
+
+      const failures = [];
+      if (!travelOk) {
+        failures.push(
+          `Travel distance exceeds IBC maximum (${formatSmartNumber(travel)} m > ${formatSmartNumber(maxTravelM)} m for ${bt.label}, ${fireSprinkler ? "sprinklered" : "non-sprinklered"}).`
+        );
+      }
+      if (!exitsOk) {
+        failures.push(
+          `Insufficient exits (${exitsN} provided; minimum ${requiredMinExits} for ${formatSmartNumber(floor)} m² floor).`
+        );
+      }
+
+      let complianceLevel = "full";
+      let complianceLabel = "Fully compliant (indicative)";
+      if (failures.length > 0) {
+        complianceLevel = "fail";
+        complianceLabel = "Non-compliant";
+      } else if (marginalTravel || marginalExits) {
+        complianceLevel = "marginal";
+        if (marginalTravel && marginalExits) {
+          complianceLabel = "Compliant — near travel limit and at minimum exit count";
+        } else if (marginalTravel) {
+          complianceLabel = "Compliant — within 10% of max travel distance";
+        } else {
+          complianceLabel = "Compliant — at minimum required exit count";
+        }
+      }
+
+      return {
+        buildingLabel: bt.label,
+        floorM2: floor,
+        travelM: travel,
+        numExits: exitsN,
+        floors,
+        sprinkler: fireSprinkler,
+        maxTravelM,
+        requiredMinExits,
+        exitWidthTotalMin,
+        providedExitWidthMin,
+        travelOk,
+        exitsOk,
+        complianceLevel,
+        complianceLabel,
+        failures,
+        travelRatio,
+      };
+    }, [fireBuildingType, fireFloorM2, fireNumExits, fireTravelM, fireFloors, fireSprinkler]);
 
     const computed = useMemo(() => {
       if (tab === "convert") {
@@ -1170,6 +1261,33 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "fireEscape") {
+        if (!fireEscapeResult) {
+          setStatus({ state: "warn", text: "Enter valid floor area, travel distance, exits, and floors." });
+          return;
+        }
+        const text = formatFireEscapeCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "daylight") {
         if (!daylightResult) {
           setStatus({ state: "warn", text: "Enter valid floor area, window area, and room depth." });
@@ -1466,7 +1584,7 @@ if (
       }
       const r = daylightResult;
       const lines = [
-        "Daylight Calculator",
+        "Daylight Calculator (EN 17037 · IES reference)",
         "",
         `Room type: ${r.roomLabel}`,
         `Floor area: ${formatSmartNumber(r.floorM2)} m²`,
@@ -1479,13 +1597,43 @@ if (
         `- Daylight factor (estimate): ${formatSmartNumber(r.dfPct)} %`,
         `- Penetration depth: ${formatSmartNumber(r.penetrationM)} m`,
         "",
-        "Compliance (indicative):",
-        `- Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): ${r.turkishOk ? "Pass" : "Fail"}`,
+        "Standards (indicative):",
+        "- Primary: EN 17037 (minimum daylight factor)",
+        "- Secondary reference: IES daylight metrics (e.g. LM-83 spatial daylight)",
+        "",
+        "Compliance:",
         `- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`,
         `- Status: ${r.complianceLabel}`,
         "",
         "Recommendations:",
-        ...(r.recommendations.length ? r.recommendations.map((s) => `- ${s}`) : ["- None — meets indicative thresholds."]),
+        ...(r.recommendations.length ? r.recommendations.map((s) => `- ${s}`) : ["- None — meets indicative targets."]),
+      ];
+      return lines.join("\n");
+    }
+
+    function formatFireEscapeCopyText() {
+      if (!fireEscapeResult) {
+        return ["Fire Escape Calculator", "", "Enter valid floor area, travel distance, whole-number exits, and floors."].join("\n");
+      }
+      const r = fireEscapeResult;
+      const lines = [
+        "Fire Escape Calculator",
+        "",
+        `Building use: ${r.buildingLabel}`,
+        `Floor area: ${formatSmartNumber(r.floorM2)} m²`,
+        `Number of exits: ${r.numExits}`,
+        `Travel distance to nearest exit: ${formatSmartNumber(r.travelM)} m`,
+        `Number of floors: ${r.floors}`,
+        `Sprinkler system: ${r.sprinkler ? "Yes" : "No"}`,
+        "",
+        "Results (IBC 2021 — indicative):",
+        `- Maximum allowed travel distance: ${formatSmartNumber(r.maxTravelM)} m`,
+        `- Required minimum number of exits: ${r.requiredMinExits}`,
+        `- Exit width requirement (total): ${formatSmartNumber(r.exitWidthTotalMin)} m (${formatSmartNumber(FIRE_EXIT_WIDTH_M)} m per required exit)`,
+        `- Minimum aggregate width for ${r.numExits} exit(s): ${formatSmartNumber(r.providedExitWidthMin)} m`,
+        `- Compliance: ${r.complianceLabel}`,
+        "",
+        r.failures.length ? ["Issues:", ...r.failures.map((f) => `- ${f}`)].join("\n") : "No compliance issues for entered criteria.",
       ];
       return lines.join("\n");
     }
@@ -1507,11 +1655,46 @@ if (
     }
 
     function buildPDFLines(projectName) {
+      if (activeTool === "fireEscape") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Fire Escape Calculator (IBC 2021 — indicative)");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!fireEscapeResult) {
+          lines.push("No valid inputs.");
+          return lines;
+        }
+        const r = fireEscapeResult;
+        lines.push("Inputs");
+        lines.push(`- Building use: ${r.buildingLabel}`);
+        lines.push(`- Floor area: ${formatSmartNumber(r.floorM2)} m²`);
+        lines.push(`- Number of exits: ${r.numExits}`);
+        lines.push(`- Travel distance to nearest exit: ${formatSmartNumber(r.travelM)} m`);
+        lines.push(`- Number of floors: ${r.floors}`);
+        lines.push(`- Sprinkler system: ${r.sprinkler ? "Yes" : "No"}`);
+        lines.push("");
+        lines.push("Results");
+        lines.push(`- Maximum allowed travel distance: ${formatSmartNumber(r.maxTravelM)} m`);
+        lines.push(`- Required minimum number of exits: ${r.requiredMinExits}`);
+        lines.push(`- Exit width requirement (total for required exits): ${formatSmartNumber(r.exitWidthTotalMin)} m`);
+        lines.push(`- Minimum aggregate width (${r.numExits} exit(s)): ${formatSmartNumber(r.providedExitWidthMin)} m`);
+        lines.push(`- Compliance status: ${r.complianceLabel}`);
+        lines.push("");
+        if (r.failures.length) {
+          lines.push("Issues");
+          r.failures.forEach((f) => lines.push(`- ${f}`));
+        } else {
+          lines.push("No compliance issues for entered criteria.");
+        }
+        return lines;
+      }
       if (activeTool === "daylight") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
         lines.push(projectName ? projectName : "Project (untitled)");
-        lines.push("Daylight Calculator");
+        lines.push("Daylight Calculator (EN 17037 primary · IES reference)");
         lines.push(`Timestamp: ${timestamp}`);
         lines.push("");
         if (!daylightResult) {
@@ -1531,14 +1714,17 @@ if (
         lines.push(`- Daylight factor (estimate): ${formatSmartNumber(r.dfPct)} %`);
         lines.push(`- Penetration depth: ${formatSmartNumber(r.penetrationM)} m`);
         lines.push("");
-        lines.push("Compliance (indicative)");
-        lines.push(`- Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): ${r.turkishOk ? "Pass" : "Fail"}`);
-        lines.push(`- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}%): ${r.enOk ? "Pass" : "Fail"}`);
+        lines.push("Standards (indicative)");
+        lines.push("- Primary: EN 17037");
+        lines.push("- Secondary reference: IES daylight metrics (e.g. LM-83)");
+        lines.push("");
+        lines.push("Compliance");
+        lines.push(`- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`);
         lines.push(`- Status: ${r.complianceLabel}`);
         lines.push("");
         lines.push("Recommendations");
         if (r.recommendations.length === 0) {
-          lines.push("- None — meets indicative thresholds.");
+          lines.push("- None — meets indicative targets.");
         } else {
           r.recommendations.forEach((s) => lines.push(`- ${s}`));
         }
@@ -1681,7 +1867,12 @@ if (
         doc.setFont("helvetica", "normal");
         doc.setFontSize(12);
         const yMax =
-          activeTool === "span" || activeTool === "parking" || activeTool === "daylight" ? 520 : 780;
+          activeTool === "span" ||
+          activeTool === "parking" ||
+          activeTool === "daylight" ||
+          activeTool === "fireEscape"
+            ? 520
+            : 780;
         lines.forEach((line) => {
           if (y > yMax) return;
           const chunks = doc.splitTextToSize(line, maxWidth);
@@ -1783,6 +1974,38 @@ if (
           }
         }
 
+        if (activeTool === "fireEscape" && fireEscapeResult) {
+          y += 10;
+          if (y < 680) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("Floor plan (schematic)", marginX, y);
+            y += 14;
+            doc.setFont("helvetica", "normal");
+            const fr = fireEscapeResult;
+            const sx = marginX;
+            const sy = y;
+            const w = 220;
+            const h = 70;
+            doc.setDrawColor(80);
+            doc.rect(sx, sy, w, h, "S");
+            doc.setFillColor(180, 220, 180);
+            doc.rect(sx + 8, sy + h - 10, 36, 10, "F");
+            doc.rect(sx + w - 44, sy + h - 10, 36, 10, "F");
+            doc.setDrawColor(200, 80, 80);
+            doc.rect(sx + 24, sy + 18, 8, 8, "S");
+            doc.setDrawColor(100);
+            if (typeof doc.setLineDash === "function") doc.setLineDash([4, 3], 0);
+            doc.line(sx + 28, sy + 22, sx + w - 36, sy + h - 5);
+            if (typeof doc.setLineDash === "function") doc.setLineDash([]);
+            doc.setFontSize(7);
+            doc.setTextColor(55);
+            doc.text(`Travel ${formatSmartNumber(fr.travelM)} m / max ${formatSmartNumber(fr.maxTravelM)} m`, sx + 6, sy + h + 12);
+            doc.setTextColor(0);
+            y += h + 22;
+          }
+        }
+
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const suffix =
@@ -1794,7 +2017,9 @@ if (
                 ? "parking-calculator"
                 : activeTool === "daylight"
                   ? "daylight-calculator"
-                  : "scale-converter";
+                  : activeTool === "fireEscape"
+                    ? "fire-escape-calculator"
+                    : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -2570,9 +2795,9 @@ if (
       if (activeTool === "daylight") {
         const dr = daylightResult;
         const compBadgeClass =
-          dr && dr.complianceLevel === "both"
+          dr && dr.complianceLevel === "green"
             ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
-            : dr && dr.complianceLevel === "turkish_only"
+            : dr && dr.complianceLevel === "yellow"
               ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
               : dr
                 ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
@@ -2713,13 +2938,13 @@ if (
                   className:
                     "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
                 },
-                `Turkish code minimum window-to-floor: ${TURKISH_WFR_MIN_PCT}%. EN 17037 indicative DF: ${formatSmartNumber(2)}% (living spaces) / ${formatSmartNumber(3)}% (offices & classrooms).`
+                `EN 17037 minimum daylight factor: ${formatSmartNumber(2)}% (bedroom, living room, kitchen, hospital room) / ${formatSmartNumber(3)}% (office, classroom). IES metrics (e.g. LM-83) as secondary reference.`
               ),
             ]),
           }),
           h(Card, {
             title: "Results",
-            hint: "Compliance & daylight",
+            hint: "EN 17037 primary · IES reference",
             tone: "results",
             children: h("div", { className: "space-y-5" }, [
               h(
@@ -2759,12 +2984,9 @@ if (
               dr
                 ? h("div", { className: "space-y-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3" }, [
                     h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-zinc-500 dark:text-zinc-400" }, "Compliance (indicative)"),
+                    h("div", { className: "text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1" }, "Primary: EN 17037 · Secondary: IES daylight metrics"),
                     h("div", { className: "text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
-                      `Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): `,
-                      h("span", { className: dr.turkishOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.turkishOk ? "Pass" : "Fail"),
-                    ]),
-                    h("div", { className: "text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
-                      `EN 17037 (min DF ${formatSmartNumber(dr.enDfMin)}%): `,
+                      `EN 17037 (min DF ${formatSmartNumber(dr.enDfMin)}% for ${dr.roomLabel}): `,
                       h("span", { className: dr.enOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.enOk ? "Pass" : "Fail"),
                     ]),
                   ])
@@ -2777,7 +2999,256 @@ if (
                       { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-zinc-700 dark:text-zinc-300" },
                       dr.recommendations.length
                         ? dr.recommendations.map((s, i) => h("li", { key: i }, s))
-                        : [h("li", { key: "ok" }, "No changes required for indicative compliance.")]
+                        : [h("li", { key: "ok" }, "No changes required for indicative EN 17037 targets.")]
+                    ),
+                  ])
+                : null,
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
+      if (activeTool === "fireEscape") {
+        const fr = fireEscapeResult;
+        const fireBadgeClass =
+          fr && fr.complianceLevel === "full"
+            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            : fr && fr.complianceLevel === "marginal"
+              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              : fr
+                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
+                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+
+        const travelRatioVis = fr && fr.maxTravelM > 0 ? Math.min(1, fr.travelM / fr.maxTravelM) : 0;
+
+        const floorSvg = fr
+          ? h(
+              "svg",
+              {
+                viewBox: "0 0 320 180",
+                className:
+                  "w-full h-auto max-h-64 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                "aria-hidden": true,
+              },
+              [
+                h("rect", {
+                  x: 40,
+                  y: 40,
+                  width: 240,
+                  height: 120,
+                  rx: 2,
+                  className: "fill-zinc-100 dark:fill-zinc-800/80 stroke-zinc-400 dark:stroke-zinc-500",
+                  strokeWidth: 1,
+                }),
+                h("rect", {
+                  x: 48,
+                  y: 148,
+                  width: 44,
+                  height: 12,
+                  rx: 1,
+                  className: "fill-emerald-300/90 dark:fill-emerald-700/80 stroke-emerald-600 dark:stroke-emerald-500",
+                  strokeWidth: 1,
+                }),
+                h("rect", {
+                  x: 228,
+                  y: 148,
+                  width: 44,
+                  height: 12,
+                  rx: 1,
+                  className: "fill-emerald-300/90 dark:fill-emerald-700/80 stroke-emerald-600 dark:stroke-emerald-500",
+                  strokeWidth: 1,
+                }),
+                h("text", { x: 70, y: 162, className: "fill-current text-[7px] font-bold" }, "EXIT"),
+                h("text", { x: 238, y: 162, className: "fill-current text-[7px] font-bold" }, "EXIT"),
+                h("circle", { cx: 56, cy: 52, r: 5, className: "fill-red-500/90 stroke-red-700 dark:stroke-red-400", strokeWidth: 1 }),
+                h(
+                  "path",
+                  {
+                    d: `M 56 52 Q ${56 + 70 + travelRatioVis * 40} ${100 + travelRatioVis * 20} 248 152`,
+                    fill: "none",
+                    className: "stroke-amber-500 dark:stroke-amber-400",
+                    strokeWidth: 2,
+                    strokeDasharray: "5 4",
+                    opacity: 0.95,
+                  }
+                ),
+                h(
+                  "text",
+                  {
+                    x: 160,
+                    y: 176,
+                    textAnchor: "middle",
+                    className: "fill-current text-[9px] font-extrabold",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  `Travel ${formatSmartNumber(fr.travelM)} m (max ${formatSmartNumber(fr.maxTravelM)} m)`
+                ),
+              ]
+            )
+          : h(
+              "div",
+              {
+                className:
+                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+              },
+              "Enter valid inputs to preview travel path and exits."
+            );
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Fire Escape Calculator",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: "Building",
+                hint: "Occupancy type sets IBC travel distance limits",
+              }),
+              h(Field, {
+                label: "Building use type",
+                children: h(
+                  "select",
+                  {
+                    value: fireBuildingType,
+                    onChange: (e) => setFireBuildingType(e.target.value),
+                    className:
+                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                  },
+                  FIRE_BUILDING_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
+                ),
+              }),
+              h(Field, {
+                label: "Floor area (m²)",
+                children: h(InputBase, {
+                  value: fireFloorM2,
+                  onChange: setFireFloorM2,
+                  placeholder: "e.g., 200",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Number of exits",
+                children: h(InputBase, {
+                  value: fireNumExits,
+                  onChange: setFireNumExits,
+                  placeholder: "e.g., 2",
+                  type: "number",
+                  step: 1,
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Maximum travel distance to nearest exit (m)",
+                children: h(InputBase, {
+                  value: fireTravelM,
+                  onChange: setFireTravelM,
+                  placeholder: "e.g., 45",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Number of floors",
+                children: h(InputBase, {
+                  value: fireFloors,
+                  onChange: setFireFloors,
+                  placeholder: "e.g., 1",
+                  type: "number",
+                  step: 1,
+                  min: 1,
+                }),
+              }),
+              h(SectionTitle, { label: "Sprinkler system", hint: "Affects maximum travel distance" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: fireSprinkler === true, onClick: () => setFireSprinkler(true) }, "Yes"),
+                h(ValueButton, { active: fireSprinkler === false, onClick: () => setFireSprinkler(false) }, "No"),
+              ]),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                },
+                `IBC 2021: minimum ${formatSmartNumber(FIRE_EXIT_WIDTH_M)} m per exit; two exits required when floor area exceeds ${FIRE_AREA_TWO_EXIT_M2} m².`
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Results",
+            hint: "IBC 2021 — indicative",
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h(
+                "div",
+                { className: classNames("inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase", fireBadgeClass) },
+                fr ? fr.complianceLabel : "—"
+              ),
+              floorSvg,
+              fr
+                ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
+                    h(ValueBlock, {
+                      label: "Maximum allowed travel distance",
+                      valueText: formatSmartNumber(fr.maxTravelM),
+                      unitText: "m",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Required minimum exits",
+                      valueText: String(fr.requiredMinExits),
+                      unitText: "exits",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Exit width requirement (total)",
+                      valueText: formatSmartNumber(fr.exitWidthTotalMin),
+                      unitText: "m",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "Your travel distance",
+                      valueText: formatSmartNumber(fr.travelM),
+                      unitText: "m",
+                      big: false,
+                    }),
+                  ])
+                : null,
+              fr
+                ? h("div", { className: "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
+                    h("span", { className: "text-zinc-500 dark:text-zinc-400 font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Reference"),
+                    "IBC 2021 — verify with AHJ and full code path.",
+                  ])
+                : null,
+              fr && fr.failures.length
+                ? h("div", { className: "space-y-2 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 px-4 py-3" }, [
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-red-700 dark:text-red-300" }, "What fails"),
+                    h(
+                      "ul",
+                      { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-red-900 dark:text-red-200" },
+                      fr.failures.map((f, i) => h("li", { key: i }, f))
                     ),
                   ])
                 : null,
@@ -3426,8 +3897,10 @@ if (
                         : activeTool === "parking"
                           ? "PDF includes all values and a schematic top-view diagram."
                           : activeTool === "daylight"
-                            ? "PDF includes all values and a schematic daylight penetration diagram."
-                            : "PDF is generated as a clean single-page layout."
+                            ? "PDF includes EN 17037 / IES reference notes, values, and a daylight penetration diagram."
+                            : activeTool === "fireEscape"
+                              ? "PDF includes all values and a schematic floor plan with travel path."
+                              : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
