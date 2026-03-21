@@ -29,6 +29,25 @@ if (
     mall: { key: "mall", label: "Shopping Mall", mult: 1.08 },
   };
 
+  /** Turkish code: min window/floor 10%. EN 17037 indicative DF minimums by space type (side-lit estimate). */
+  const DAYLIGHT_ROOM_TYPES = [
+    { id: "bedroom", label: "Bedroom", enDfMin: 2 },
+    { id: "living", label: "Living Room", enDfMin: 2 },
+    { id: "kitchen", label: "Kitchen", enDfMin: 2 },
+    { id: "office", label: "Office", enDfMin: 3 },
+    { id: "classroom", label: "Classroom", enDfMin: 3 },
+    { id: "hospital", label: "Hospital Room", enDfMin: 2 },
+  ];
+
+  const DAYLIGHT_FACADES = {
+    north: { label: "North", sky: 1.0, pen: 1.0 },
+    south: { label: "South", sky: 1.06, pen: 1.06 },
+    east: { label: "East", sky: 0.93, pen: 0.96 },
+    west: { label: "West", sky: 0.93, pen: 0.96 },
+  };
+
+  const TURKISH_WFR_MIN_PCT = 10;
+
   const ROOM_PROGRAM_TYPES = [
     { id: "bedroom", name: "Bedroom", minAreaM2: 12, minDimM: 3.0 },
     { id: "living", name: "Living Room", minAreaM2: 20, minDimM: 3.3 },
@@ -339,6 +358,12 @@ if (
         description: "Vehicle capacity and layout estimator",
         intro: "Estimate stall counts, aisle widths, and layout efficiency from total parking area and typical module dimensions.",
       },
+      {
+        id: "daylight",
+        label: "Daylight Calculator",
+        description: "Natural light compliance checker",
+        intro: "Check window-to-floor ratio against Turkish code and compare an indicative daylight factor to EN 17037 targets.",
+      },
     ];
 
     const TOOL_PATHS = {
@@ -348,6 +373,7 @@ if (
       span: "/span-calculator",
       room: "/room-program",
       parking: "/parking-calculator",
+      daylight: "/daylight-calculator",
     };
 
     function pathToTool(pathname) {
@@ -357,6 +383,7 @@ if (
       if (p === "/ramp-calculator") return "ramp";
       if (p === "/room-program") return "room";
       if (p === "/parking-calculator") return "parking";
+      if (p === "/daylight-calculator") return "daylight";
       return "scale";
     }
 
@@ -424,6 +451,12 @@ if (
     const [parkingAreaM2, setParkingAreaM2] = useState("1000");
     const [parkingLayout, setParkingLayout] = useState("perpendicular");
     const [parkingUsage, setParkingUsage] = useState("office");
+
+    const [daylightRoomType, setDaylightRoomType] = useState("living");
+    const [daylightFloorM2, setDaylightFloorM2] = useState("20");
+    const [daylightWindowM2, setDaylightWindowM2] = useState("3");
+    const [daylightDepthM, setDaylightDepthM] = useState("5");
+    const [daylightFacade, setDaylightFacade] = useState("south");
 
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
@@ -806,6 +839,103 @@ if (
       };
     }, [parkingAreaM2, parkingLayout, parkingUsage]);
 
+    const daylightResult = useMemo(() => {
+      const floor = Number(daylightFloorM2);
+      const win = Number(daylightWindowM2);
+      const depth = Number(daylightDepthM);
+      if (!Number.isFinite(floor) || floor <= 0) return null;
+      if (!Number.isFinite(win) || win < 0) return null;
+      if (!Number.isFinite(depth) || depth <= 0) return null;
+
+      const room = DAYLIGHT_ROOM_TYPES.find((r) => r.id === daylightRoomType) || DAYLIGHT_ROOM_TYPES[1];
+      const facade = DAYLIGHT_FACADES[daylightFacade] || DAYLIGHT_FACADES.north;
+
+      const wfrPctRaw = (win / floor) * 100;
+      const wfrPct = Math.round(wfrPctRaw * 10) / 10;
+
+      const depthAdj = 1 / (1 + 0.14 * depth);
+      const dfRaw = 2.0 * (wfrPct / 10) * facade.sky * depthAdj;
+      const dfPct = Math.min(18, Math.round(dfRaw * 10) / 10);
+
+      const depthFactorPen = 1 / (1 + 0.1 * depth);
+      const penRaw = Math.min(
+        depth,
+        2.2 * Math.sqrt(Math.max(0.01, win)) * (wfrPct / 10) * facade.pen * depthFactorPen
+      );
+      const penetrationM = Math.round(penRaw * 10) / 10;
+
+      const turkishOk = wfrPct + 1e-9 >= TURKISH_WFR_MIN_PCT;
+      const enDfMin = room.enDfMin;
+      const enOk = dfPct + 1e-9 >= enDfMin;
+
+      let complianceLevel = "both";
+      let complianceLabel = "Meets Turkish code and EN 17037 (indicative)";
+      if (turkishOk && enOk) {
+        complianceLevel = "both";
+        complianceLabel = "Meets Turkish code and EN 17037 (indicative)";
+      } else if (turkishOk && !enOk) {
+        complianceLevel = "turkish_only";
+        complianceLabel = "Meets Turkish code; EN 17037 target not met";
+      } else if (!turkishOk && enOk) {
+        complianceLevel = "neither";
+        complianceLabel = "Fails Turkish code (min WFR); EN 17037 DF target met (indicative)";
+      } else {
+        complianceLevel = "neither";
+        complianceLabel = "Does not meet Turkish code and EN 17037 (indicative)";
+      }
+
+      const recommendations = [];
+      if (!turkishOk) {
+        const needWinT = (TURKISH_WFR_MIN_PCT / 100) * floor - win;
+        if (needWinT > 0.005) {
+          recommendations.push(
+            `Increase window area by at least ${formatSmartNumber(needWinT)} m² to reach Turkish code minimum (${TURKISH_WFR_MIN_PCT}% window-to-floor).`
+          );
+        }
+      }
+      if (!enOk) {
+        if (dfPct > 0.05) {
+          const targetWfr = wfrPct * (enDfMin / dfPct);
+          const needWinE = (targetWfr / 100) * floor - win;
+          if (needWinE > 0.05) {
+            recommendations.push(
+              `Increase window area by about ${formatSmartNumber(needWinE)} m² to approach EN 17037 ${formatSmartNumber(enDfMin)}% DF target for ${room.label} (indicative).`
+            );
+          } else {
+            recommendations.push(
+              `Consider rooflights, clerestory glazing, or reducing room depth — indicative DF is ${formatSmartNumber(dfPct)}%, target ${formatSmartNumber(enDfMin)}% for ${room.label}.`
+            );
+          }
+        } else {
+          recommendations.push(
+            `Increase window area substantially — indicative DF is below ${formatSmartNumber(enDfMin)}% target for ${room.label}.`
+          );
+        }
+      }
+      if ((!turkishOk || !enOk) && depth > penetrationM * 1.12) {
+        recommendations.push(
+          `Consider rooflights or light shelves — daylight penetration (${formatSmartNumber(penetrationM)} m) is limited relative to room depth (${formatSmartNumber(depth)} m).`
+        );
+      }
+
+      return {
+        floorM2: floor,
+        windowM2: win,
+        depthM: depth,
+        roomLabel: room.label,
+        facadeLabel: facade.label,
+        wfrPct,
+        dfPct,
+        penetrationM,
+        enDfMin,
+        turkishOk,
+        enOk,
+        complianceLevel,
+        complianceLabel,
+        recommendations,
+      };
+    }, [daylightRoomType, daylightFloorM2, daylightWindowM2, daylightDepthM, daylightFacade]);
+
     const computed = useMemo(() => {
       if (tab === "convert") {
         return {
@@ -1040,6 +1170,33 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "daylight") {
+        if (!daylightResult) {
+          setStatus({ state: "warn", text: "Enter valid floor area, window area, and room depth." });
+          return;
+        }
+        const text = formatDaylightCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "parking") {
         if (!parkingResult) {
           setStatus({ state: "warn", text: "Enter a valid total parking area (m²)." });
@@ -1303,6 +1460,36 @@ if (
       ].join("\n");
     }
 
+    function formatDaylightCopyText() {
+      if (!daylightResult) {
+        return ["Daylight Calculator", "", "Enter valid floor area (m²), window area (m²), and room depth (m)."].join("\n");
+      }
+      const r = daylightResult;
+      const lines = [
+        "Daylight Calculator",
+        "",
+        `Room type: ${r.roomLabel}`,
+        `Floor area: ${formatSmartNumber(r.floorM2)} m²`,
+        `Window area: ${formatSmartNumber(r.windowM2)} m²`,
+        `Room depth: ${formatSmartNumber(r.depthM)} m`,
+        `Facade: ${r.facadeLabel}`,
+        "",
+        "Results:",
+        `- Window-to-floor ratio: ${formatSmartNumber(r.wfrPct)} %`,
+        `- Daylight factor (estimate): ${formatSmartNumber(r.dfPct)} %`,
+        `- Penetration depth: ${formatSmartNumber(r.penetrationM)} m`,
+        "",
+        "Compliance (indicative):",
+        `- Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): ${r.turkishOk ? "Pass" : "Fail"}`,
+        `- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`,
+        `- Status: ${r.complianceLabel}`,
+        "",
+        "Recommendations:",
+        ...(r.recommendations.length ? r.recommendations.map((s) => `- ${s}`) : ["- None — meets indicative thresholds."]),
+      ];
+      return lines.join("\n");
+    }
+
     function formatRoomProgramCopyText() {
       const lines = ["Room Program", "", `Timestamp: ${new Date().toLocaleString()}`, ""];
       if (roomProgramRows.length === 0) {
@@ -1320,6 +1507,43 @@ if (
     }
 
     function buildPDFLines(projectName) {
+      if (activeTool === "daylight") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Daylight Calculator");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!daylightResult) {
+          lines.push("No valid inputs.");
+          return lines;
+        }
+        const r = daylightResult;
+        lines.push("Inputs");
+        lines.push(`- Room type: ${r.roomLabel}`);
+        lines.push(`- Floor area: ${formatSmartNumber(r.floorM2)} m²`);
+        lines.push(`- Window area: ${formatSmartNumber(r.windowM2)} m²`);
+        lines.push(`- Room depth: ${formatSmartNumber(r.depthM)} m`);
+        lines.push(`- Facade: ${r.facadeLabel}`);
+        lines.push("");
+        lines.push("Results");
+        lines.push(`- Window-to-floor ratio: ${formatSmartNumber(r.wfrPct)} %`);
+        lines.push(`- Daylight factor (estimate): ${formatSmartNumber(r.dfPct)} %`);
+        lines.push(`- Penetration depth: ${formatSmartNumber(r.penetrationM)} m`);
+        lines.push("");
+        lines.push("Compliance (indicative)");
+        lines.push(`- Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): ${r.turkishOk ? "Pass" : "Fail"}`);
+        lines.push(`- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}%): ${r.enOk ? "Pass" : "Fail"}`);
+        lines.push(`- Status: ${r.complianceLabel}`);
+        lines.push("");
+        lines.push("Recommendations");
+        if (r.recommendations.length === 0) {
+          lines.push("- None — meets indicative thresholds.");
+        } else {
+          r.recommendations.forEach((s) => lines.push(`- ${s}`));
+        }
+        return lines;
+      }
       if (activeTool === "parking") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -1456,7 +1680,8 @@ if (
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(12);
-        const yMax = activeTool === "span" || activeTool === "parking" ? 520 : 780;
+        const yMax =
+          activeTool === "span" || activeTool === "parking" || activeTool === "daylight" ? 520 : 780;
         lines.forEach((line) => {
           if (y > yMax) return;
           const chunks = doc.splitTextToSize(line, maxWidth);
@@ -1527,6 +1752,37 @@ if (
           }
         }
 
+        if (activeTool === "daylight" && daylightResult) {
+          y += 10;
+          if (y < 680) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text("Cross-section (schematic)", marginX, y);
+            y += 14;
+            doc.setFont("helvetica", "normal");
+            const dr = daylightResult;
+            const sx = marginX;
+            const sy = y;
+            const rw = 240;
+            const rh = 72;
+            const penFrac = dr.depthM > 0 ? Math.min(1, dr.penetrationM / dr.depthM) : 0;
+            const penW = rw * penFrac;
+            doc.setDrawColor(90);
+            doc.setFillColor(255, 251, 235);
+            doc.rect(sx + 2, sy + 8, Math.max(8, penW), rh - 8, "F");
+            doc.setFillColor(244, 244, 246);
+            doc.rect(sx, sy, rw, rh, "S");
+            doc.setFillColor(200, 220, 255);
+            doc.rect(sx - 2, sy + 22, 6, 28, "F");
+            doc.setFontSize(7);
+            doc.setTextColor(55);
+            doc.text("Window", sx - 2, sy + 18);
+            doc.text(`Penetration ≈ ${formatSmartNumber(dr.penetrationM)} m`, sx + 8, sy + rh + 10);
+            doc.setTextColor(0);
+            y += rh + 22;
+          }
+        }
+
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
         const suffix =
@@ -1536,7 +1792,9 @@ if (
               ? "room-program"
               : activeTool === "parking"
                 ? "parking-calculator"
-                : "scale-converter";
+                : activeTool === "daylight"
+                  ? "daylight-calculator"
+                  : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -2309,6 +2567,247 @@ if (
         ]);
       }
 
+      if (activeTool === "daylight") {
+        const dr = daylightResult;
+        const compBadgeClass =
+          dr && dr.complianceLevel === "both"
+            ? "border border-emerald-500/45 bg-emerald-500/[0.12] text-emerald-900 dark:text-emerald-100"
+            : dr && dr.complianceLevel === "turkish_only"
+              ? "border border-amber-500/45 bg-amber-500/[0.12] text-amber-950 dark:text-amber-100"
+              : dr
+                ? "border border-red-500/45 bg-red-500/[0.12] text-red-900 dark:text-red-100"
+                : "border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300";
+
+        const penFrac = dr && dr.depthM > 0 ? Math.min(1, dr.penetrationM / dr.depthM) : 0;
+        const xPen = 56 + penFrac * 210;
+
+        const sectionSvg = dr
+          ? h(
+              "svg",
+              {
+                viewBox: "0 0 320 140",
+                className:
+                  "w-full h-auto max-h-56 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900/40 text-zinc-700 dark:text-zinc-200",
+                "aria-hidden": true,
+              },
+              [
+                h("defs", {}, [
+                  h(
+                    "linearGradient",
+                    { id: "daylightPenGrad", x1: "0%", y1: "0%", x2: "100%", y2: "0%" },
+                    [
+                      h("stop", { offset: "0%", stopColor: "rgb(253 224 71)", stopOpacity: 0.55 }),
+                      h("stop", { offset: "100%", stopColor: "rgb(253 224 71)", stopOpacity: 0.08 }),
+                    ]
+                  ),
+                ]),
+                h("rect", {
+                  x: 56,
+                  y: 48,
+                  width: 210,
+                  height: 56,
+                  className: "fill-zinc-100 dark:fill-zinc-800/80 stroke-zinc-400 dark:stroke-zinc-500",
+                  strokeWidth: 1,
+                }),
+                h("polygon", {
+                  points: `56,58 56,88 ${xPen},104 56,104`,
+                  fill: "url(#daylightPenGrad)",
+                }),
+                h("rect", {
+                  x: 46,
+                  y: 62,
+                  width: 6,
+                  height: 28,
+                  rx: 1,
+                  className: "fill-sky-200 dark:fill-sky-500/60 stroke-sky-400 dark:stroke-sky-500",
+                  strokeWidth: 1,
+                }),
+                h("line", { x1: 56, y1: 104, x2: 266, y2: 104, stroke: "currentColor", strokeWidth: 1, opacity: 0.45 }),
+                h(
+                  "text",
+                  {
+                    x: 160,
+                    y: 128,
+                    textAnchor: "middle",
+                    className: "fill-current text-[9px] font-extrabold",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  `Daylight zone ≈ ${formatSmartNumber(dr.penetrationM)} m deep`
+                ),
+              ]
+            )
+          : h(
+              "div",
+              {
+                className:
+                  "rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-600 bg-zinc-50/50 dark:bg-zinc-900/30 p-10 text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400",
+              },
+              "Enter valid dimensions to preview daylight penetration."
+            );
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Daylight Calculator",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: "Room",
+                hint: "Category sets EN 17037 minimum daylight factor",
+              }),
+              h(Field, {
+                label: "Room type",
+                children: h(
+                  "select",
+                  {
+                    value: daylightRoomType,
+                    onChange: (e) => setDaylightRoomType(e.target.value),
+                    className:
+                      "w-full h-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-4 text-zinc-900 dark:text-zinc-100",
+                  },
+                  DAYLIGHT_ROOM_TYPES.map((t) => h("option", { key: t.id, value: t.id }, t.label))
+                ),
+              }),
+              h(Field, {
+                label: "Floor area (m²)",
+                children: h(InputBase, {
+                  value: daylightFloorM2,
+                  onChange: setDaylightFloorM2,
+                  placeholder: "e.g., 24",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Total window area (m²)",
+                children: h(InputBase, {
+                  value: daylightWindowM2,
+                  onChange: setDaylightWindowM2,
+                  placeholder: "e.g., 3",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: "Room depth (m)",
+                children: h(InputBase, {
+                  value: daylightDepthM,
+                  onChange: setDaylightDepthM,
+                  placeholder: "e.g., 5",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(SectionTitle, { label: "Facade orientation", hint: "Affects indicative DF and penetration" }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: daylightFacade === "north", onClick: () => setDaylightFacade("north") }, "North"),
+                h(ValueButton, { active: daylightFacade === "south", onClick: () => setDaylightFacade("south") }, "South"),
+                h(ValueButton, { active: daylightFacade === "east", onClick: () => setDaylightFacade("east") }, "East"),
+                h(ValueButton, { active: daylightFacade === "west", onClick: () => setDaylightFacade("west") }, "West"),
+              ]),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 leading-relaxed",
+                },
+                `Turkish code minimum window-to-floor: ${TURKISH_WFR_MIN_PCT}%. EN 17037 indicative DF: ${formatSmartNumber(2)}% (living spaces) / ${formatSmartNumber(3)}% (offices & classrooms).`
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Results",
+            hint: "Compliance & daylight",
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h(
+                "div",
+                { className: classNames("inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase", compBadgeClass) },
+                dr ? dr.complianceLabel : "—"
+              ),
+              sectionSvg,
+              dr
+                ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
+                    h(ValueBlock, {
+                      label: "Window-to-floor ratio",
+                      valueText: formatSmartNumber(dr.wfrPct),
+                      unitText: "%",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Daylight factor (estimate)",
+                      valueText: formatSmartNumber(dr.dfPct),
+                      unitText: "%",
+                      big: true,
+                    }),
+                    h(ValueBlock, {
+                      label: "Penetration depth",
+                      valueText: formatSmartNumber(dr.penetrationM),
+                      unitText: "m",
+                      big: false,
+                    }),
+                    h(ValueBlock, {
+                      label: "EN 17037 min DF",
+                      valueText: formatSmartNumber(dr.enDfMin),
+                      unitText: "%",
+                      big: false,
+                    }),
+                  ])
+                : null,
+              dr
+                ? h("div", { className: "space-y-2 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3" }, [
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-zinc-500 dark:text-zinc-400" }, "Compliance (indicative)"),
+                    h("div", { className: "text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
+                      `Turkish code (${TURKISH_WFR_MIN_PCT}% min WFR): `,
+                      h("span", { className: dr.turkishOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.turkishOk ? "Pass" : "Fail"),
+                    ]),
+                    h("div", { className: "text-sm font-semibold text-zinc-800 dark:text-zinc-100" }, [
+                      `EN 17037 (min DF ${formatSmartNumber(dr.enDfMin)}%): `,
+                      h("span", { className: dr.enOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.enOk ? "Pass" : "Fail"),
+                    ]),
+                  ])
+                : null,
+              dr
+                ? h("div", { className: "space-y-2" }, [
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-zinc-500 dark:text-zinc-400" }, "Recommendations"),
+                    h(
+                      "ul",
+                      { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-zinc-700 dark:text-zinc-300" },
+                      dr.recommendations.length
+                        ? dr.recommendations.map((s, i) => h("li", { key: i }, s))
+                        : [h("li", { key: "ok" }, "No changes required for indicative compliance.")]
+                    ),
+                  ])
+                : null,
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       if (activeTool === "span") {
         const SPAN_SYSTEM_OPTIONS = [
           { value: "rc_flat", label: "Reinforced Concrete Flat Slab" },
@@ -2926,7 +3425,9 @@ if (
                         ? "PDF includes the room table, total area, and timestamp."
                         : activeTool === "parking"
                           ? "PDF includes all values and a schematic top-view diagram."
-                          : "PDF is generated as a clean single-page layout."
+                          : activeTool === "daylight"
+                            ? "PDF includes all values and a schematic daylight penetration diagram."
+                            : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
