@@ -16,6 +16,19 @@ if (
     A4: { wMm: 210, hMm: 297 },
   };
 
+  const ROOM_PROGRAM_TYPES = [
+    { id: "bedroom", name: "Bedroom", minAreaM2: 12, minDimM: 3.0 },
+    { id: "living", name: "Living Room", minAreaM2: 20, minDimM: 3.3 },
+    { id: "kitchen", name: "Kitchen", minAreaM2: 7, minDimM: 2.4 },
+    { id: "bathroom", name: "Bathroom", minAreaM2: 4, minDimM: 1.8 },
+    { id: "wc", name: "WC", minAreaM2: 1.5, minDimM: 1.0 },
+    { id: "corridor", name: "Corridor", minAreaM2: 1.2, minDimM: 1.0 },
+    { id: "studio", name: "Studio", minAreaM2: 25, minDimM: 4.5 },
+    { id: "office", name: "Office", minAreaM2: 10, minDimM: 2.7 },
+    { id: "lobby", name: "Lobby", minAreaM2: 15, minDimM: 3.0 },
+    { id: "storage", name: "Storage", minAreaM2: 4, minDimM: 1.8 },
+  ];
+
   const FT_TO_M = 0.3048;
   const IN_TO_M = 0.0254;
   const FT2_TO_M2 = FT_TO_M * FT_TO_M;
@@ -78,7 +91,7 @@ if (
   function formatSmartNumber(n) {
     if (n == null || !Number.isFinite(n)) return "—";
     const rounded = Math.round(n * 10) / 10;
-    return rounded.toFixed(1).replace(/\.0$/, "");
+    return rounded.toFixed(1);
   }
 
   function formatFtInFromMeters(meters) {
@@ -142,8 +155,8 @@ if (
   function Card({ title, hint, children, right, tone }) {
     const cardTone =
       tone === "results"
-        ? "bg-zinc-50/80 dark:bg-zinc-900/40 border-zinc-300 dark:border-zinc-700 shadow-[0_10px_30px_rgba(0,0,0,0.09)]"
-        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-[0_6px_22px_rgba(0,0,0,0.06)]";
+        ? "bg-zinc-50/80 dark:bg-zinc-900/40 border-zinc-300 dark:border-zinc-700 shadow-[0_10px_30px_rgba(0,0,0,0.09)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+        : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-[0_6px_22px_rgba(0,0,0,0.06)] dark:shadow-[0_6px_22px_rgba(0,0,0,0.35)]";
     return h(
       "section",
       {
@@ -213,9 +226,9 @@ if (
         type: "button",
         onClick,
         className: classNames(
-          "h-10 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
+          "h-10 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors duration-150",
           active
-            ? "bg-zinc-900 border-zinc-900 text-white"
+            ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
             : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
         ),
       },
@@ -301,6 +314,12 @@ if (
         description: "Structural span and slab depth estimator",
         intro: "Estimate member depth, span-to-depth ratio, and indicative column or profile sizes from span and load assumptions.",
       },
+      {
+        id: "room",
+        label: "Room Program",
+        description: "Room schedule and area program builder",
+        intro: "Build a room schedule from typologies, compare guideline minimums to your areas, and export CSV or PDF.",
+      },
     ];
 
     const TOOL_PATHS = {
@@ -308,6 +327,7 @@ if (
       stair: "/stair-calculator",
       ramp: "/ramp-calculator",
       span: "/span-calculator",
+      room: "/room-program",
     };
 
     function pathToTool(pathname) {
@@ -315,6 +335,7 @@ if (
       if (p === "/span-calculator") return "span";
       if (p === "/stair-calculator") return "stair";
       if (p === "/ramp-calculator") return "ramp";
+      if (p === "/room-program") return "room";
       return "scale";
     }
 
@@ -375,6 +396,10 @@ if (
     const [spanSystem, setSpanSystem] = useState("rc_flat"); // rc_flat | rc_beam | steel | timber
     const [spanLoad, setSpanLoad] = useState("medium"); // light | medium | heavy
 
+    const [roomProgramTypeId, setRoomProgramTypeId] = useState("bedroom");
+    const [roomProgramAreaStr, setRoomProgramAreaStr] = useState("12.0");
+    const [roomProgramRows, setRoomProgramRows] = useState([]);
+
     const [status, setStatus] = useState({ state: "idle", text: "Ready" });
     const statusState = status.state;
 
@@ -387,6 +412,16 @@ if (
     useEffect(() => {
       document.title = `${activeToolMeta.label} — Architecture Toolkit`;
     }, [activeToolMeta.label]);
+
+    const roomProgramTotal = useMemo(() => {
+      const s = roomProgramRows.reduce((acc, r) => acc + r.userAreaM2, 0);
+      return Math.round(s * 10) / 10;
+    }, [roomProgramRows]);
+
+    useEffect(() => {
+      const t = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
+      if (t) setRoomProgramAreaStr(formatSmartNumber(t.minAreaM2));
+    }, [roomProgramTypeId]);
 
     function navigateToTool(toolId) {
       setActiveTool(toolId);
@@ -411,6 +446,7 @@ if (
     function applyTheme(nextTheme) {
       const isDark = nextTheme === "dark";
       document.documentElement.classList.toggle("dark", isDark);
+      document.documentElement.style.colorScheme = isDark ? "dark" : "light";
       document.body.classList.add("theme-transition");
       try {
         localStorage.setItem("arch-theme", nextTheme);
@@ -930,6 +966,29 @@ if (
     }
 
     async function onCopy() {
+      if (activeTool === "room") {
+        const text = formatRoomProgramCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (activeTool === "span") {
         if (!spanResult) {
           setStatus({ state: "warn", text: "Enter a valid span length." });
@@ -1082,7 +1141,83 @@ if (
       setStatus({ state: "ok", text: "CSV exported." });
     }
 
+    function addRoomToProgram() {
+      const t = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId);
+      if (!t) return;
+      const a = Number(roomProgramAreaStr);
+      if (!Number.isFinite(a) || a <= 0) {
+        setStatus({ state: "warn", text: "Enter a valid area (m²)." });
+        return;
+      }
+      setRoomProgramRows((prev) => [
+        ...prev,
+        {
+          uid: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          name: t.name,
+          minAreaM2: t.minAreaM2,
+          minDimM: t.minDimM,
+          userAreaM2: Math.round(a * 10) / 10,
+        },
+      ]);
+      setStatus({ state: "ok", text: "Room added to list." });
+    }
+
+    function removeRoomProgramRow(uid) {
+      setRoomProgramRows((prev) => prev.filter((r) => r.uid !== uid));
+    }
+
+    function exportRoomProgramCSV() {
+      const header = ["room", "min_area_m2", "user_area_m2", "min_dimension_m"];
+      const rows = roomProgramRows.map((r) => [
+        r.name,
+        formatSmartNumber(r.minAreaM2),
+        formatSmartNumber(r.userAreaM2),
+        formatSmartNumber(r.minDimM),
+      ]);
+      const csv = [header.join(","), ...rows.map((row) => row.map(csvEscape).join(","))].join("\n");
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      downloadTextFile(`room-program-${ts}.csv`, csv, "text/csv;charset=utf-8");
+      setStatus({ state: "ok", text: "CSV exported." });
+    }
+
+    function formatRoomProgramCopyText() {
+      const lines = ["Room Program", "", `Timestamp: ${new Date().toLocaleString()}`, ""];
+      if (roomProgramRows.length === 0) {
+        lines.push("No rooms in list.");
+        return lines.join("\n");
+      }
+      roomProgramRows.forEach((r) => {
+        lines.push(
+          `${r.name} — min ${formatSmartNumber(r.minAreaM2)} m² | user ${formatSmartNumber(r.userAreaM2)} m² | min dim ${formatSmartNumber(r.minDimM)} m`
+        );
+      });
+      lines.push("");
+      lines.push(`Total program area: ${formatSmartNumber(roomProgramTotal)} m²`);
+      return lines.join("\n");
+    }
+
     function buildPDFLines(projectName) {
+      if (activeTool === "room") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push("Room Program");
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (roomProgramRows.length === 0) {
+          lines.push("No rooms in list.");
+          return lines;
+        }
+        lines.push("Room | Min area (m²) | User area (m²) | Min dimension (m)");
+        roomProgramRows.forEach((r) => {
+          lines.push(
+            `${r.name} | ${formatSmartNumber(r.minAreaM2)} | ${formatSmartNumber(r.userAreaM2)} | ${formatSmartNumber(r.minDimM)}`
+          );
+        });
+        lines.push("");
+        lines.push(`Total program area: ${formatSmartNumber(roomProgramTotal)} m²`);
+        return lines;
+      }
       if (activeTool === "span") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -1172,11 +1307,12 @@ if (
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(12);
+        const yMax = activeTool === "span" ? 520 : 780;
         lines.forEach((line) => {
-          if (y > (activeTool === "span" ? 520 : 780)) return;
+          if (y > yMax) return;
           const chunks = doc.splitTextToSize(line, maxWidth);
           chunks.forEach((chunk) => {
-            if (y > (activeTool === "span" ? 520 : 780)) return;
+            if (y > yMax) return;
             doc.text(chunk, marginX, y);
             y += chunk.trim() === "" ? 12 : 14;
           });
@@ -1216,7 +1352,8 @@ if (
 
         const safeName = (pdfProjectName.trim() || "Untitled").replace(/[\\/:*?"<>|]+/g, "-");
         const ts = new Date().toISOString().replace(/[:.]/g, "-");
-        const suffix = activeTool === "span" ? "span-calculator" : "scale-converter";
+        const suffix =
+          activeTool === "span" ? "span-calculator" : activeTool === "room" ? "room-program" : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -1476,7 +1613,7 @@ if (
                 className: classNames(
                   "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
                   denomSafe === p
-                    ? "bg-zinc-900 border-zinc-900 text-white"
+                    ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
                     : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 ),
               },
@@ -1504,7 +1641,7 @@ if (
                 className: classNames(
                   "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
                   unit === u
-                    ? "bg-zinc-900 border-zinc-900 text-white"
+                    ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
                     : "bg-white dark:bg-zinc-950 border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 ),
               },
@@ -1641,6 +1778,163 @@ if (
     }
 
     function renderMainToolContent() {
+      if (activeTool === "room") {
+        const rt = ROOM_PROGRAM_TYPES.find((r) => r.id === roomProgramTypeId) ?? ROOM_PROGRAM_TYPES[0];
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: "Room Program",
+            hint: "Inputs",
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: "Room type",
+                hint: "Guideline minimums are indicative — verify with local codes.",
+              }),
+              h(Field, {
+                label: "Select",
+                children: h(
+                  "select",
+                  {
+                    value: roomProgramTypeId,
+                    onChange: (e) => setRoomProgramTypeId(e.target.value),
+                    className:
+                      "w-full h-[52px] rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50/90 dark:bg-zinc-900 px-4 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-500",
+                  },
+                  ROOM_PROGRAM_TYPES.map((opt) => h("option", { key: opt.id, value: opt.id }, opt.name))
+                ),
+              }),
+              h(
+                "div",
+                {
+                  className:
+                    "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 px-4 py-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300 space-y-1",
+                },
+                [
+                  h("div", { key: "a" }, `Recommended minimum area: ${formatSmartNumber(rt.minAreaM2)} m²`),
+                  h("div", { key: "d" }, `Recommended minimum dimension: ${formatSmartNumber(rt.minDimM)} m`),
+                ]
+              ),
+              h(Field, {
+                label: "Area (m²) — override if needed",
+                children: h(InputBase, {
+                  value: roomProgramAreaStr,
+                  onChange: setRoomProgramAreaStr,
+                  placeholder: "e.g., 12.0",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(
+                "button",
+                {
+                  type: "button",
+                  onClick: addRoomToProgram,
+                  className:
+                    "w-full h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                },
+                "Add to list"
+              ),
+            ]),
+          }),
+          h(Card, {
+            title: "Room list",
+            hint: "Program & export",
+            tone: "results",
+            children: h("div", { className: "space-y-4" }, [
+              roomProgramRows.length === 0
+                ? h(
+                    "div",
+                    { className: "text-sm font-semibold text-zinc-500 dark:text-zinc-400" },
+                    "No rooms yet. Add a room from the left."
+                  )
+                : h(
+                    "div",
+                    { className: "overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-700" },
+                    h(
+                      "table",
+                      { className: "w-full text-left text-sm border-collapse" },
+                      [
+                        h(
+                          "thead",
+                          { className: "bg-zinc-100 dark:bg-zinc-900/80 text-[10px] font-extrabold tracking-[.18em] uppercase text-zinc-600 dark:text-zinc-300" },
+                          h("tr", {}, [
+                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Name"),
+                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Min area"),
+                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700" }, "Your area"),
+                            h("th", { className: "px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 w-24" }, ""),
+                          ])
+                        ),
+                        h(
+                          "tbody",
+                          {},
+                          roomProgramRows.map((row) =>
+                            h("tr", { key: row.uid, className: "border-b border-zinc-100 dark:border-zinc-800 last:border-0 bg-white dark:bg-zinc-950/50" }, [
+                              h("td", { className: "px-4 py-3 font-bold text-zinc-900 dark:text-zinc-50" }, row.name),
+                              h("td", { className: "px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-200" }, `${formatSmartNumber(row.minAreaM2)} m²`),
+                              h("td", { className: "px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-200" }, `${formatSmartNumber(row.userAreaM2)} m²`),
+                              h("td", { className: "px-4 py-3" }, [
+                                h(
+                                  "button",
+                                  {
+                                    type: "button",
+                                    onClick: () => removeRoomProgramRow(row.uid),
+                                    className:
+                                      "text-xs font-extrabold tracking-wide uppercase text-red-600 dark:text-red-400 hover:underline",
+                                  },
+                                  "Delete"
+                                ),
+                              ]),
+                            ])
+                          )
+                        ),
+                      ]
+                    )
+                  ),
+              h("div", { className: "flex items-baseline justify-between gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700" }, [
+                h(
+                  "div",
+                  { className: "text-[11px] font-extrabold tracking-[.22em] uppercase text-zinc-600 dark:text-zinc-400" },
+                  "Total program area"
+                ),
+                h("div", { className: "text-2xl font-black text-zinc-900 dark:text-zinc-50" }, `${formatSmartNumber(roomProgramTotal)} m²`),
+              ]),
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-extrabold tracking-wide hover:bg-black dark:hover:bg-zinc-200 transition-colors shadow-sm",
+                  },
+                  "Copy as text"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: exportRoomProgramCSV,
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export CSV"
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 font-extrabold tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                  },
+                  "Export PDF"
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       if (activeTool === "span") {
         const SPAN_SYSTEM_OPTIONS = [
           { value: "rc_flat", label: "Reinforced Concrete Flat Slab" },
@@ -1944,7 +2238,7 @@ if (
                     className: classNames(
                       "h-8 px-3 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors",
                       rampInputMode === "slope"
-                        ? "bg-zinc-900 border-zinc-900 text-white"
+                        ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
                         : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
                     ),
                   },
@@ -1962,7 +2256,7 @@ if (
                     className: classNames(
                       "h-8 px-3 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors",
                       rampInputMode === "length"
-                        ? "bg-zinc-900 border-zinc-900 text-white"
+                        ? "bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-zinc-900"
                         : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300"
                     ),
                   },
@@ -2089,7 +2383,7 @@ if (
             children: h("div", { className: "flex flex-col gap-4" }, [
               h(ValueBlock, {
                 label: "Number of steps",
-                valueText: stairResult ? String(stairResult.steps) : "—",
+                valueText: stairResult ? formatSmartNumber(stairResult.steps) : "—",
                 unitText: "steps",
                 big: true,
               }),
@@ -2131,7 +2425,7 @@ if (
       ]);
     }
 
-    return h("div", { className: "min-h-screen flex flex-col px-4 py-12 md:py-14" }, [
+    return h("div", { className: "min-h-screen flex flex-col px-4 py-12 md:py-14 bg-zinc-50 dark:bg-zinc-950" }, [
       h(
         "div",
         { className: "flex-1 max-w-7xl mx-auto w-full space-y-8" },
@@ -2149,7 +2443,7 @@ if (
                     type: "button",
                     onClick: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
                     className:
-                      "w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors",
+                      "w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors duration-150 text-zinc-900 dark:text-zinc-100",
                     "aria-label": "Toggle dark mode",
                   },
                   theme === "dark"
@@ -2177,7 +2471,7 @@ if (
           ]),
 
           h("div", { className: "grid grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)] gap-7 items-start" }, [
-            h("aside", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] p-4 lg:sticky lg:top-6" }, [
+            h("aside", { className: "bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] p-4 lg:sticky lg:top-6" }, [
               h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-zinc-600 dark:text-zinc-400 mb-3 px-2" }, "Tools"),
               h("nav", { className: "flex flex-col gap-2" }, TOOL_ITEMS.map((tool) =>
                 h(
@@ -2189,7 +2483,7 @@ if (
                     className: classNames(
                       "w-full text-left rounded-2xl border-l-4 px-3.5 py-3.5 transition-colors",
                       activeTool === tool.id
-                        ? "bg-zinc-900 border-zinc-900 border-l-zinc-300 text-white shadow-[0_10px_24px_rgba(0,0,0,0.16)]"
+                        ? "bg-zinc-900 border-zinc-900 border-l-zinc-300 text-white shadow-[0_10px_24px_rgba(0,0,0,0.16)] dark:bg-zinc-100 dark:border-zinc-100 dark:border-l-zinc-400 dark:text-zinc-900"
                         : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 border-l-zinc-200 dark:border-l-zinc-800 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
                     ),
                   },
@@ -2201,7 +2495,7 @@ if (
                         key: "d",
                         className: classNames(
                           "mt-1 text-[11px] font-semibold leading-relaxed",
-                          activeTool === tool.id ? "text-zinc-300" : "text-zinc-500 dark:text-zinc-400"
+                          activeTool === tool.id ? "text-zinc-300 dark:text-zinc-600" : "text-zinc-500 dark:text-zinc-400"
                         ),
                       },
                       tool.description
@@ -2254,7 +2548,9 @@ if (
                     { className: "mt-3 text-xs text-zinc-500 dark:text-zinc-400" },
                     activeTool === "span"
                       ? "PDF includes values and a schematic cross-section diagram."
-                      : "PDF is generated as a clean single-page layout."
+                      : activeTool === "room"
+                        ? "PDF includes the room table, total area, and timestamp."
+                        : "PDF is generated as a clean single-page layout."
                   )
                 ]),
               ])
