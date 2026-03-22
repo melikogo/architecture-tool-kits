@@ -524,6 +524,14 @@
         referenceIbc: "IBC 2021 — verify with AHJ and full code path.",
         whatFails: "What fails",
       },
+      stair: {
+        ibcRiserOk: "✓ Riser — IBC compliant",
+        ibcRiserFail: "✗ Riser — above IBC max (17.8 cm)",
+        ibcTreadOk: "✓ Tread — IBC compliant",
+        ibcTreadFail: "✗ Tread — below IBC min (27.9 cm)",
+        standardsReference:
+          "Reference: IBC 2021 — Max riser 7 in (17.8 cm) · Min tread 11 in (27.9 cm) | EN 13101 — Riser 14–21 cm · Tread min 24 cm",
+      },
       site: {
         compliance: {
           ok: "Inputs consistent and buildable (indicative)",
@@ -1226,6 +1234,14 @@
         yourTravelDistance: "Sizin kaçış mesafeniz",
         referenceIbc: "IBC 2021 — yerel otorite ve tam yönetmelik yoluyla doğrulayın.",
         whatFails: "Eksikler",
+      },
+      stair: {
+        ibcRiserOk: "✓ Basamak yükselmesi — IBC uyumlu",
+        ibcRiserFail: "✗ Basamak yükselmesi — IBC üst sınırını aşıyor (17,8 cm)",
+        ibcTreadOk: "✓ Basamak derinliği — IBC uyumlu",
+        ibcTreadFail: "✗ Basamak derinliği — IBC alt sınırının altında (27,9 cm)",
+        standardsReference:
+          "Referans: IBC 2021 — Maks. basamak yükselmesi 7 in (17,8 cm) · Min. basamak derinliği 11 in (27,9 cm) | EN 13101 — Yükselme 14–21 cm · Min. derinlik 24 cm",
       },
       site: {
         compliance: {

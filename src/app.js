@@ -2548,11 +2548,18 @@ const h = React.createElement;
       const totalRunCm = Math.max(0, steps - 1) * suggestedTreadCm;
       const totalRunM = totalRunCm / 100;
 
+      const IBC_MAX_RISER_CM = 17.8;
+      const IBC_MIN_TREAD_CM = 27.9;
+      const ibcRiserCompliant = actualRiserCm <= IBC_MAX_RISER_CM + 1e-9;
+      const ibcTreadCompliant = suggestedTreadCm >= IBC_MIN_TREAD_CM - 1e-9;
+
       return {
         steps,
         actualRiserCm,
         suggestedTreadCm,
         totalRunM,
+        ibcRiserCompliant,
+        ibcTreadCompliant,
       };
     }, [stairTotalHeightM, stairDesiredRiserCm]);
 
@@ -6858,6 +6865,42 @@ const h = React.createElement;
                 unitText: t("common.unitCm"),
                 big: true,
               }),
+              stairResult
+                ? h("div", { className: "flex flex-wrap gap-2 pt-1" }, [
+                    h(
+                      "div",
+                      {
+                        className: classNames(
+                          "inline-flex items-center min-h-9 px-3 rounded-full text-[10px] font-extrabold tracking-wide",
+                          stairResult.ibcRiserCompliant
+                            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
+                            : "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                        ),
+                      },
+                      stairResult.ibcRiserCompliant ? t("stair.ibcRiserOk") : t("stair.ibcRiserFail")
+                    ),
+                    h(
+                      "div",
+                      {
+                        className: classNames(
+                          "inline-flex items-center min-h-9 px-3 rounded-full text-[10px] font-extrabold tracking-wide",
+                          stairResult.ibcTreadCompliant
+                            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
+                            : "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                        ),
+                      },
+                      stairResult.ibcTreadCompliant ? t("stair.ibcTreadOk") : t("stair.ibcTreadFail")
+                    ),
+                  ])
+                : null,
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("stair.standardsReference")
+              ),
             ]),
           }),
         ]);
