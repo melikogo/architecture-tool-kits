@@ -637,6 +637,8 @@
         dimXLabel: "{n} × {v} m",
         dimYLabel: "{n} × {v} m",
         planDiagram: "Top view (column grid)",
+        standardsReference:
+          "Reference: Eurocode 2 EN 1992 · ACI 318 — Column grid and bay proportions are indicative; verify with structural engineer",
       },
       loadCalc: {
         sectionBuilding: "Building",
@@ -1352,6 +1354,8 @@
         dimXLabel: "{n} × {v} m",
         dimYLabel: "{n} × {v} m",
         planDiagram: "Üst görünüm (kolon ızgarası)",
+        standardsReference:
+          "Referans: Eurocode 2 EN 1992 · ACI 318 — Kolon ızgarası ve açıklık oranları gösterge niteliğindedir; statik mühendisle doğrulayın",
       },
       loadCalc: {
         sectionBuilding: "Bina",

@@ -4588,12 +4588,12 @@ const h = React.createElement;
               const yj = sy + (j * bh) / gr.ny;
               doc.line(sx, yj, sx + bw, yj);
             }
-            doc.setFillColor(30, 30, 35);
+            doc.setFillColor(220, 38, 38);
             for (let ix = 0; ix <= gr.nx; ix++) {
               for (let iy = 0; iy <= gr.ny; iy++) {
                 const cx = sx + (ix * bw) / gr.nx;
                 const cy = sy + (iy * bh) / gr.ny;
-                doc.circle(cx, cy, 2.2, "F");
+                doc.circle(cx, cy, 4.4, "F");
               }
             }
             doc.setDrawColor(0);
@@ -7091,8 +7091,8 @@ const h = React.createElement;
                   key: `c${ix}-${iy}`,
                   cx,
                   cy,
-                  r: 4,
-                  className: "fill-[var(--st-fg)]",
+                  r: 8,
+                  fill: "#DC2626",
                 })
               );
             }
@@ -7296,6 +7296,14 @@ const h = React.createElement;
                 unitText: t("common.unitCm"),
                 big: true,
               }),
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("gridCalc.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
