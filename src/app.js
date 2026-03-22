@@ -530,6 +530,92 @@ const h = React.createElement;
     ]);
   }
 
+  /**
+   * Left-side under-construction silhouette: floors draw L→R (400ms stagger), then scaffolding + roof crane sway.
+   * Pure SVG + CSS; 8s loop. See .structura-hero-construction-* in style.css.
+   */
+  function LandingHeroConstructionBuilding() {
+    const ns = "http://www.w3.org/2000/svg";
+    const floorY = [248, 204, 160, 116, 72];
+    const scaffoldV = [52, 82, 112, 142, 168];
+    const scaffoldH = [226, 182, 138, 94];
+    return h("div", { className: "structura-hero-construction-building", "aria-hidden": true }, [
+      h(
+        "svg",
+        {
+          className: "structura-hero-construction-svg",
+          viewBox: "0 0 220 300",
+          xmlns: ns,
+          fill: "none",
+          focusable: "false",
+        },
+        [
+          /* Floors: bottom → top, each draws L→R via stroke-dash (pathLength=1) */
+          ...floorY.map((y, i) =>
+            h("path", {
+              key: `fl-${i}`,
+              className: `structura-uc-floor structura-uc-floor--${i + 1}`,
+              d: `M 48 ${y} L 172 ${y}`,
+              pathLength: 1,
+              strokeLinecap: "butt",
+            })
+          ),
+          /* Scaffolding + outline: fades in after floors */
+          h(
+            "g",
+            { className: "structura-uc-scaffold" },
+            [
+              h("line", { className: "structura-uc-scaffold-line", x1: 44, y1: 252, x2: 176, y2: 252 }),
+              h("line", { className: "structura-uc-scaffold-line", x1: 44, y1: 248, x2: 44, y2: 68 }),
+              h("line", { className: "structura-uc-scaffold-line", x1: 176, y1: 248, x2: 176, y2: 68 }),
+              ...scaffoldV.map((x) =>
+                h("line", { key: `sv-${x}`, className: "structura-uc-scaffold-line", x1: x, y1: 248, x2: x, y2: 72 })
+              ),
+              ...scaffoldH.map((y) =>
+                h("line", { key: `sh-${y}`, className: "structura-uc-scaffold-line", x1: 44, y1: y, x2: 176, y2: y })
+              ),
+            ]
+          ),
+          /* Roof crane: jib group origin = mast top for sway */
+          h(
+            "g",
+            { className: "structura-uc-roof-crane", transform: "translate(110, 68)" },
+            [
+              h("line", { className: "structura-uc-crane-mast", x1: 0, y1: 0, x2: 0, y2: -26, strokeLinecap: "square" }),
+              h(
+                "g",
+                { className: "structura-uc-crane-jib", transform: "translate(0,-26)" },
+                [
+                  h("line", {
+                    className: "structura-uc-crane-line",
+                    x1: 0,
+                    y1: 0,
+                    x2: 50,
+                    y2: -8,
+                    strokeLinecap: "square",
+                  }),
+                  h("line", {
+                    className: "structura-uc-crane-line structura-uc-crane-cable",
+                    x1: 38,
+                    y1: -6,
+                    x2: 38,
+                    y2: 36,
+                    strokeDasharray: "2 3",
+                    strokeLinecap: "round",
+                  }),
+                  h("path", {
+                    className: "structura-uc-crane-hook",
+                    d: "M 34 36 L 42 36 L 38 42 Z",
+                  }),
+                ]
+              ),
+            ]
+          ),
+        ]
+      ),
+    ]);
+  }
+
   /** Left-side sheet graphics: north arrow, dimensions, ruler 0–10, scale label (behind text) */
   function LandingHeroSheetDecor() {
     const ns = "http://www.w3.org/2000/svg";
@@ -1016,7 +1102,7 @@ const h = React.createElement;
       )
     );
 
-    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
+    return h("div", { ref: wrapRef, className: "relative z-[1] max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
       h(
         "section",
@@ -6387,6 +6473,7 @@ const h = React.createElement;
         h("div", { className: "structura-hero-shell" }, [
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
           h(LandingHeroBackgroundScene, null),
+          h(LandingHeroConstructionBuilding, null),
           h(LandingHeroSheetDecor, null),
           h(LandingHeroEdgeCrane, null),
           h(LandingHeroBlock, {

@@ -181,6 +181,240 @@ html:not(.dark) .structura-hero-sheet-layer {
   }
 }
 
+/* —— Left: under-construction building (SVG + CSS, 8s loop) —— */
+.structura-hero-construction-building {
+  position: absolute;
+  z-index: 0;
+  left: clamp(6px, 2.5vw, 36px);
+  bottom: clamp(8%, 12vh, 26%);
+  width: min(300px, 44vw);
+  max-height: min(52vh, 320px);
+  pointer-events: none;
+  /* Dark: ~10% white; light: ~5% ink (readable on white bg) */
+  color: rgba(10, 10, 10, 0.05);
+}
+
+html.dark .structura-hero-construction-building {
+  color: rgba(255, 255, 255, 0.12);
+}
+
+.structura-hero-construction-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.structura-uc-floor {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-duration: 8s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Floors: 500ms draw each, 400ms stagger between starts; reset end of cycle */
+.structura-uc-floor--1 {
+  animation-name: structura-uc-floor-1;
+}
+.structura-uc-floor--2 {
+  animation-name: structura-uc-floor-2;
+}
+.structura-uc-floor--3 {
+  animation-name: structura-uc-floor-3;
+}
+.structura-uc-floor--4 {
+  animation-name: structura-uc-floor-4;
+}
+.structura-uc-floor--5 {
+  animation-name: structura-uc-floor-5;
+}
+
+@keyframes structura-uc-floor-1 {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  6.25% {
+    stroke-dashoffset: 0;
+  }
+  99.5% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes structura-uc-floor-2 {
+  0%,
+  5% {
+    stroke-dashoffset: 1;
+  }
+  11.25% {
+    stroke-dashoffset: 0;
+  }
+  99.5% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes structura-uc-floor-3 {
+  0%,
+  10% {
+    stroke-dashoffset: 1;
+  }
+  16.25% {
+    stroke-dashoffset: 0;
+  }
+  99.5% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes structura-uc-floor-4 {
+  0%,
+  15% {
+    stroke-dashoffset: 1;
+  }
+  21.25% {
+    stroke-dashoffset: 0;
+  }
+  99.5% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes structura-uc-floor-5 {
+  0%,
+  20% {
+    stroke-dashoffset: 1;
+  }
+  26.25% {
+    stroke-dashoffset: 0;
+  }
+  99.5% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+.structura-uc-scaffold {
+  opacity: 0;
+  animation: structura-uc-scaffold-fade 8s ease-in-out infinite;
+}
+
+.structura-uc-scaffold-line {
+  stroke: currentColor;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes structura-uc-scaffold-fade {
+  0%,
+  26.25% {
+    opacity: 0;
+  }
+  32%,
+  99.4% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.structura-uc-roof-crane {
+  opacity: 0;
+  animation: structura-uc-crane-visibility 8s ease-in-out infinite;
+}
+
+@keyframes structura-uc-crane-visibility {
+  0%,
+  31.9% {
+    opacity: 0;
+  }
+  32%,
+  99.4% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.structura-uc-crane-mast,
+.structura-uc-crane-line {
+  stroke: currentColor;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.structura-uc-crane-hook {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.9;
+}
+
+.structura-uc-crane-jib {
+  transform-origin: 0 0;
+  animation: structura-uc-mini-crane-sway 8s ease-in-out infinite;
+}
+
+@keyframes structura-uc-mini-crane-sway {
+  0%,
+  32% {
+    transform: rotate(0deg);
+  }
+  38% {
+    transform: rotate(-3.2deg);
+  }
+  46% {
+    transform: rotate(2.8deg);
+  }
+  54% {
+    transform: rotate(-3.2deg);
+  }
+  62% {
+    transform: rotate(2.8deg);
+  }
+  70% {
+    transform: rotate(-3.2deg);
+  }
+  78% {
+    transform: rotate(2.8deg);
+  }
+  86% {
+    transform: rotate(-3.2deg);
+  }
+  94% {
+    transform: rotate(2.8deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .structura-hero-construction-building {
+    display: none;
+  }
+}
+
 /* Far-right crane (silhouette, slow swing) — 20px from hero edge; viewBox includes full jib + swing */
 .structura-hero-edge-crane {
   position: absolute;
@@ -392,8 +626,25 @@ body {
 
   .structura-hero-grid-drift,
   .structura-hero-edge-crane-jib,
-  .structura-hero-node {
+  .structura-hero-node,
+  .structura-uc-floor,
+  .structura-uc-scaffold,
+  .structura-uc-roof-crane,
+  .structura-uc-crane-jib {
     animation: none !important;
+  }
+
+  .structura-uc-floor {
+    stroke-dashoffset: 0 !important;
+  }
+
+  .structura-uc-scaffold,
+  .structura-uc-roof-crane {
+    opacity: 0.55 !important;
+  }
+
+  .structura-uc-crane-jib {
+    transform: none !important;
   }
 
   .structura-hero-edge-crane-jib {
