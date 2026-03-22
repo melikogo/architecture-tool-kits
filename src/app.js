@@ -1152,7 +1152,6 @@ const h = React.createElement;
 
     return h("div", { ref: wrapRef, className: "relative z-[1] max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
-      h(GlobalDisclaimerBanner, { fullBleed: false }),
       h(
         "section",
         { className: "structura-hero-main-section flex-1 flex flex-col min-h-0 w-full max-md:pb-5 md:pb-5" },
@@ -2145,7 +2144,7 @@ const h = React.createElement;
 
   const GLOBAL_DISCLAIMER_DISMISSED_KEY = "structura_global_disclaimer_dismissed";
 
-  /** Disclaimer below top nav; dismiss persists in localStorage. fullBleed=false inside overflow:hidden hero shell. */
+  /** Site-wide disclaimer above footer; dismiss persists in localStorage. fullBleed=false keeps bar inside a narrow parent (e.g. rounded). */
   function GlobalDisclaimerBanner({ fullBleed = true }) {
     const { t } = useI18n();
     const [visible, setVisible] = useState(true);
@@ -8016,6 +8015,7 @@ const h = React.createElement;
           lang,
         }),
         h(LandingContactSection, { t }),
+        h(GlobalDisclaimerBanner, null),
         h("footer", { className: "mt-auto pt-10 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
           h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
           h(
@@ -8061,7 +8061,6 @@ const h = React.createElement;
             ]),
             h("p", { className: "mt-5 max-w-3xl text-[15px] text-[var(--st-muted)] font-medium leading-relaxed" }, activeToolMeta.intro),
           ]),
-          h(GlobalDisclaimerBanner, null),
 
           h("div", { className: "grid grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)] gap-7 items-start" }, [
             h(
@@ -8190,6 +8189,7 @@ const h = React.createElement;
             : null,
         ]
       ),
+      h(GlobalDisclaimerBanner, null),
       h("footer", { className: "mt-auto pt-12 pb-6 text-center px-4 border-t border-[var(--st-border)]" }, [
         h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
         h(
