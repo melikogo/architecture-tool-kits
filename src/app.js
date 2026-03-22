@@ -609,7 +609,7 @@ const h = React.createElement;
     return h(
       "svg",
       {
-        className: "structura-hero-floorplan-svg w-full max-w-[280px] sm:max-w-[340px] md:max-w-[460px] mx-auto md:mx-0 md:ml-auto",
+        className: "structura-hero-floorplan-svg",
         viewBox: "0 0 440 360",
         fill: "none",
         xmlns: ns,
@@ -816,11 +816,11 @@ const h = React.createElement;
       )
     );
 
-    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
+    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
       h(
         "section",
-        { className: "flex-1 flex flex-col min-h-0 w-full pb-10" },
+        { className: "flex-1 flex flex-col min-h-0 w-full pb-4 md:pb-5" },
         h("div", {
           className:
             "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 flex-1 min-h-0 w-full items-stretch",
@@ -861,8 +861,8 @@ const h = React.createElement;
               ])
             ),
           ]),
-          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[160px] md:min-h-0 py-6 md:py-0" }, [
-            h(LandingHeroFloorPlanSvg, null),
+          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[160px] md:min-h-0 py-4 md:py-0 min-w-0 overflow-hidden" }, [
+            h("div", { className: "structura-hero-floorplan-wrap w-full" }, [h(LandingHeroFloorPlanSvg, null)]),
           ]),
         ])
       ),

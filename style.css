@@ -33,7 +33,7 @@ html.dark {
   min-height: 60vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* clips background + keeps blueprint / crane inside bounds */
 }
 
 /* Legacy grid layer (optional depth); hero scene SVG is primary */
@@ -126,19 +126,19 @@ html.dark .structura-hero-scene {
   }
 }
 
-/* Far-right edge crane (silhouette, slow swing) */
+/* Far-right crane (silhouette, slow swing) — inset so full SVG stays visible with overflow:hidden */
 .structura-hero-edge-crane {
   position: absolute;
-  right: 0;
+  right: max(12px, env(safe-area-inset-right, 0px));
   bottom: clamp(8%, 12vh, 22%);
-  width: min(100px, 12vw);
+  width: min(150px, 18vw);
   z-index: 2;
   pointer-events: none;
-  color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 html:not(.dark) .structura-hero-edge-crane {
-  color: rgba(10, 10, 10, 0.15);
+  color: rgba(10, 10, 10, 0.25);
 }
 
 .structura-hero-edge-crane-svg {
@@ -173,13 +173,39 @@ html:not(.dark) .structura-hero-edge-crane {
   }
 }
 
-/* Floor plan column (right) — faint white/dark strokes @ ~10% */
+/* Floor plan column (right) — faint strokes; scaled to fit (no horizontal clip) */
+.structura-hero-floorplan-wrap {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .structura-hero-floorplan-wrap {
+    justify-content: flex-end;
+  }
+}
+
 .structura-hero-floorplan-svg {
   width: 100%;
-  max-width: 460px;
+  max-width: min(420px, 100%);
   height: auto;
   margin-left: auto;
+  flex-shrink: 1;
+  transform: scale(0.9);
+  transform-origin: center right;
   --fp-stroke: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 767px) {
+  .structura-hero-floorplan-svg {
+    transform-origin: center center;
+    max-width: min(320px, 92vw);
+  }
 }
 
 html:not(.dark) .structura-hero-floorplan-svg {
