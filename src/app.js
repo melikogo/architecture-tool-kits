@@ -523,6 +523,198 @@ const h = React.createElement;
     ]);
   }
 
+  /** Left-side sheet graphics: north arrow, dimensions, ruler 0–10, scale label (behind text) */
+  function LandingHeroSheetDecor() {
+    const ns = "http://www.w3.org/2000/svg";
+    const dimMk = "url(#structura-sheet-dim-arrow)";
+    const rulerX0 = 44;
+    const rulerX1 = 498;
+    const rulerY = 646;
+    const span = (rulerX1 - rulerX0) / 10;
+    const rulerMajor = [];
+    const rulerNums = [];
+    const rulerMinor = [];
+    for (let i = 0; i <= 10; i += 1) {
+      const x = rulerX0 + i * span;
+      rulerMajor.push(
+        h("line", {
+          key: `maj-${i}`,
+          className: "structura-hero-sheet-stroke",
+          x1: x,
+          y1: rulerY,
+          x2: x,
+          y2: rulerY - 16,
+          strokeWidth: 1.15,
+        })
+      );
+      rulerNums.push(
+        h(
+          "text",
+          {
+            key: `num-${i}`,
+            className: "structura-hero-sheet-text",
+            x,
+            y: rulerY - 22,
+            textAnchor: "middle",
+            fontSize: 15,
+            fontWeight: "600",
+          },
+          String(i)
+        )
+      );
+    }
+    for (let i = 0; i < 10; i += 1) {
+      const x = rulerX0 + i * span + span / 2;
+      rulerMinor.push(
+        h("line", {
+          key: `min-${i}`,
+          className: "structura-hero-sheet-stroke",
+          x1: x,
+          y1: rulerY,
+          x2: x,
+          y2: rulerY - 8,
+          strokeWidth: 0.75,
+        })
+      );
+    }
+
+    return h("div", { className: "structura-hero-sheet-layer", "aria-hidden": true }, [
+      h(
+        "svg",
+        {
+          className: "structura-hero-sheet-svg",
+          viewBox: "0 0 1200 700",
+          preserveAspectRatio: "xMinYMid meet",
+          xmlns: ns,
+        },
+        [
+          h("defs", null, [
+            h(
+              "marker",
+              {
+                id: "structura-sheet-dim-arrow",
+                markerWidth: 5,
+                markerHeight: 5,
+                refX: 2.5,
+                refY: 2.5,
+                orient: "auto",
+                markerUnits: "strokeWidth",
+              },
+              h("path", { className: "structura-hero-sheet-fill", d: "M0,0 L5,2.5 L0,5 Z" })
+            ),
+          ]),
+          /* North arrow — top left */
+          h(
+            "g",
+            { opacity: 0.1 },
+            h("g", { transform: "translate(88, 82)" }, [
+              h("circle", {
+                className: "structura-hero-sheet-stroke",
+                cx: 0,
+                cy: 6,
+                r: 22,
+                strokeWidth: 1.2,
+              }),
+              h("path", {
+                className: "structura-hero-sheet-fill",
+                d: "M 0 -38 L -9 -17 L 9 -17 Z",
+              }),
+              h("line", {
+                className: "structura-hero-sheet-stroke",
+                x1: 0,
+                y1: -17,
+                x2: 0,
+                y2: -2,
+                strokeWidth: 1.2,
+                strokeLinecap: "square",
+              }),
+              h(
+                "text",
+                {
+                  className: "structura-hero-sheet-text",
+                  x: 0,
+                  y: 14,
+                  textAnchor: "middle",
+                  fontSize: 17,
+                  fontWeight: "800",
+                },
+                "N"
+              ),
+            ])
+          ),
+          /* Dimension strings — left zone */
+          h("g", { opacity: 0.06 }, [
+            h("g", null, [
+              h("line", { className: "structura-hero-sheet-stroke", x1: 52, y1: 276, x2: 52, y2: 296, strokeWidth: 0.7 }),
+              h("line", { className: "structura-hero-sheet-stroke", x1: 232, y1: 276, x2: 232, y2: 296, strokeWidth: 0.7 }),
+              h("line", {
+                className: "structura-hero-sheet-stroke",
+                x1: 52,
+                y1: 268,
+                x2: 232,
+                y2: 268,
+                strokeWidth: 0.75,
+                markerEnd: dimMk,
+                markerStart: dimMk,
+              }),
+            ]),
+            h("g", null, [
+              h("line", { className: "structura-hero-sheet-stroke", x1: 48, y1: 348, x2: 48, y2: 368, strokeWidth: 0.7 }),
+              h("line", { className: "structura-hero-sheet-stroke", x1: 196, y1: 348, x2: 196, y2: 368, strokeWidth: 0.7 }),
+              h("line", {
+                className: "structura-hero-sheet-stroke",
+                x1: 48,
+                y1: 340,
+                x2: 196,
+                y2: 340,
+                strokeWidth: 0.75,
+                markerEnd: dimMk,
+                markerStart: dimMk,
+              }),
+            ]),
+            h("g", null, [
+              h("line", { className: "structura-hero-sheet-stroke", x1: 56, y1: 428, x2: 56, y2: 448, strokeWidth: 0.7 }),
+              h("line", { className: "structura-hero-sheet-stroke", x1: 168, y1: 428, x2: 168, y2: 448, strokeWidth: 0.7 }),
+              h("line", {
+                className: "structura-hero-sheet-stroke",
+                x1: 56,
+                y1: 420,
+                x2: 168,
+                y2: 420,
+                strokeWidth: 0.75,
+                markerEnd: dimMk,
+                markerStart: dimMk,
+              }),
+            ]),
+          ]),
+          /* Ruler + scale label (11px monospace via HTML inside foreignObject) */
+          h("g", { opacity: 0.08 }, [
+            h("line", {
+              className: "structura-hero-sheet-stroke",
+              x1: rulerX0,
+              y1: rulerY,
+              x2: rulerX1,
+              y2: rulerY,
+              strokeWidth: 1.25,
+              strokeLinecap: "square",
+            }),
+            ...rulerMajor,
+            ...rulerMinor,
+            ...rulerNums,
+            h(
+              "foreignObject",
+              { x: rulerX1 + 10, y: rulerY - 10, width: 200, height: 28 },
+              h("div", {
+                className: "structura-hero-sheet-scale-html",
+                xmlns: "http://www.w3.org/1999/xhtml",
+              }, "scale 1:100")
+            ),
+          ]),
+        ]
+      ),
+    ]);
+  }
+
   /** Silhouette crane on hero right edge — mast, jib, cable, hook; jib swings ±5° */
   function LandingHeroEdgeCrane() {
     const ns = "http://www.w3.org/2000/svg";
@@ -5917,6 +6109,7 @@ const h = React.createElement;
         h("div", { className: "structura-hero-shell" }, [
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
           h(LandingHeroBackgroundScene, null),
+          h(LandingHeroSheetDecor, null),
           h(LandingHeroEdgeCrane, null),
           h(LandingHeroBlock, {
             navToggles: h(NavToggles, { theme, onThemeToggle: handleThemeToggle }),
