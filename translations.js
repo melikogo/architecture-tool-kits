@@ -15,9 +15,9 @@
           col1Body:
             "Architects and engineers spend too much time on repetitive calculations. Structura brings the most-used design checks into one clean, fast interface — no login, no setup, no noise.",
           col2Label: "02",
-          col2Title: "10 professional tools",
+          col2Title: "11 professional tools",
           col2Body:
-            "From scale conversions and stair geometry to fire escape compliance and thermal performance — every tool is built around real project workflows.",
+            "From scale conversions and stair geometry to structural grids, fire escape compliance and thermal performance — every tool is built around real project workflows.",
           col3Label: "03",
           col3Title: "Students to seniors",
           col3Body:
@@ -221,6 +221,11 @@
           description: "Structural span and slab depth estimator",
           intro: "Estimate member depth, span-to-depth ratio, and indicative column or profile sizes from span and load assumptions.",
         },
+        gridCalculator: {
+          label: "Structural Grid Calculator",
+          description: "Axis grid and structural bay planner",
+          intro: "Divide a rectangular footprint into structural bays, count columns, and check indicative slab span and span-to-depth efficiency.",
+        },
         siteCoverage: {
           label: "Site Coverage Calculator",
           description: "Plot ratio, coverage and floor area calculator",
@@ -265,6 +270,7 @@
         firePlan: "PDF includes all values and a schematic floor plan with travel path.",
         uValueLayers: "PDF includes layer build-up, U/R values, and a schematic layer diagram.",
         sitePlan: "PDF includes SCR/FAR results, validation notes, and a schematic site plan diagram.",
+        gridPlan: "PDF includes all values and a schematic top-view grid diagram.",
         default: "PDF is generated as a clean single-page layout.",
       },
       export: {
@@ -292,6 +298,17 @@
           memberLine: "- Column / profile: {v}",
           designLine: "- Design status: {v}",
           validationLine: "- Validation: {v}",
+        },
+        gridCalc: {
+          baysXLine: "- Bays in X direction: {v}",
+          baysYLine: "- Bays in Y direction: {v}",
+          actualBayWLine: "- Actual bay width (m): {v}",
+          actualBayDLine: "- Actual bay depth (m): {v}",
+          columnsLine: "- Total columns: {v}",
+          slabSpanLine: "- Recommended slab span (m): {v}",
+          ldLine: "- Indicative span-to-depth (L/d ≈ {v})",
+          depthLine: "- Indicative slab depth (cm): {v}",
+          efficiencyLine: "- Efficiency rating: {v}",
         },
         stair: {
           stepsLine: "- Number of steps: {v}",
@@ -369,6 +386,11 @@
           light: "Light",
           medium: "Medium",
           heavy: "Heavy",
+        },
+        gridStructure: {
+          rc: "Reinforced Concrete",
+          steel: "Steel",
+          timber: "Timber",
         },
         roomProgram: {
           bedroom: "Bedroom",
@@ -532,6 +554,38 @@
         memberSuggestionTitle: "Column / profile suggestion",
         ldRatio: "Span-to-depth ratio (rule used)",
       },
+      gridCalc: {
+        sectionFootprint: "Building footprint",
+        sectionFootprintHint: "Overall plan dimensions in metres",
+        sectionBays: "Bay preferences",
+        sectionBaysHint: "Target column spacing along each axis",
+        buildingWidthM: "Building width (m)",
+        buildingDepthM: "Building depth (m)",
+        prefBayWidthM: "Preferred bay width (m)",
+        prefBayWidthHint: "Typical column spacing in X direction",
+        prefBayDepthM: "Preferred bay depth (m)",
+        prefBayDepthHint: "Typical column spacing in Y direction",
+        structureType: "Structure type",
+        structureTypeHint: "Used for indicative L/d and efficiency bands",
+        baysX: "Bays in X direction",
+        baysY: "Bays in Y direction",
+        actualBayWidth: "Actual bay width (m)",
+        actualBayDepth: "Actual bay depth (m)",
+        totalColumns: "Total columns",
+        recommendedSlabSpan: "Recommended slab span (m)",
+        indicativeDepth: "Indicative slab depth (cm)",
+        efficiency: {
+          optimal: "Optimal",
+          acceptable: "Acceptable",
+          review: "Review",
+        },
+        ldIndicative: "Indicative span-to-depth (L/d ≈ {v})",
+        note: "Indicative only: efficiency uses governing slab span vs typical limits and how closely adjusted bays match your targets (verify with structural engineer).",
+        enterValid: "Enter positive building dimensions and preferred bay sizes.",
+        dimXLabel: "{n} × {v} m",
+        dimYLabel: "{n} × {v} m",
+        planDiagram: "Top view (column grid)",
+      },
       uValue: {
         compliance: {
           green: "Meets indicative threshold (U ≤ max)",
@@ -579,9 +633,9 @@
           col1Body:
             "Mimarlar ve mühendisler tekrarlayan hesaplamalar için çok fazla zaman harcıyor. Structura, en çok kullanılan tasarım kontrollerini tek bir temiz ve hızlı arayüzde topluyor — giriş yok, kurulum yok, karmaşıklık yok.",
           col2Label: "02",
-          col2Title: "10 profesyonel araç",
+          col2Title: "11 profesyonel araç",
           col2Body:
-            "Ölçek dönüşümlerinden merdiven geometrisine, yangın kaçış uyumluluğundan termal performansa — her araç gerçek proje iş akışları etrafında tasarlandı.",
+            "Ölçek dönüşümlerinden merdiven geometrisine, yapısal izgaralara, yangın kaçış uyumluluğundan termal performansa — her araç gerçek proje iş akışları etrafında tasarlandı.",
           col3Label: "03",
           col3Title: "Öğrenciden uzmana",
           col3Body:
@@ -786,6 +840,11 @@
           description: "Yapısal açıklık ve döşeme derinliği tahmini",
           intro: "Açıklık ve yük varsayımlarından eleman derinliği, açıklık/derinlik oranı ve gösterge kolon veya kesit boyutları tahmini.",
         },
+        gridCalculator: {
+          label: "Yapısal Izgara Hesaplayıcı",
+          description: "Eksen ızgarası ve yapısal açıklık planlayıcısı",
+          intro: "Dikdörtgen oturumu yapısal açıklıklara bölün, kolon sayısını sayın ve gösterge döşeme açıklığı ile açıklık/derinlik verimliliğini kontrol edin.",
+        },
         siteCoverage: {
           label: "İmar Hesaplayıcı",
           description: "TAKS, KAKS ve kat alanı hesabı",
@@ -830,6 +889,7 @@
         firePlan: "PDF; tüm değerleri ve kaçış yolunu gösteren şematik planı içerir.",
         uValueLayers: "PDF; katman yapısını, U/R değerlerini ve şematik katman diyagramını içerir.",
         sitePlan: "PDF; TAKS/KAKS sonuçlarını, doğrulama notlarını ve şematik site planını içerir.",
+        gridPlan: "PDF; tüm değerleri ve şematik üst görünüm ızgara diyagramını içerir.",
         default: "PDF tek sayfalık düzenli bir çıktı olarak oluşturulur.",
       },
       export: {
@@ -857,6 +917,17 @@
           memberLine: "- Kolon / kesit önerisi: {v}",
           designLine: "- Tasarım durumu: {v}",
           validationLine: "- Doğrulama: {v}",
+        },
+        gridCalc: {
+          baysXLine: "- X yönünde açıklık sayısı: {v}",
+          baysYLine: "- Y yönünde açıklık sayısı: {v}",
+          actualBayWLine: "- Gerçek açıklık genişliği (m): {v}",
+          actualBayDLine: "- Gerçek açıklık derinliği (m): {v}",
+          columnsLine: "- Toplam kolon: {v}",
+          slabSpanLine: "- Önerilen döşeme açıklığı (m): {v}",
+          ldLine: "- Gösterge açıklık/derinlik (L/d ≈ {v})",
+          depthLine: "- Gösterge döşeme derinliği (cm): {v}",
+          efficiencyLine: "- Verimlilik derecesi: {v}",
         },
         stair: {
           stepsLine: "- Basamak sayısı: {v}",
@@ -934,6 +1005,11 @@
           light: "Hafif",
           medium: "Orta",
           heavy: "Ağır",
+        },
+        gridStructure: {
+          rc: "Betonarme",
+          steel: "Çelik",
+          timber: "Ahşap",
         },
         roomProgram: {
           bedroom: "Yatak odası",
@@ -1097,6 +1173,38 @@
         estimatedDepth: "Tahmini döşeme / kiriş derinliği",
         memberSuggestionTitle: "Kolon / kesit önerisi",
         ldRatio: "Açıklık/derinlik oranı (kullanılan kural)",
+      },
+      gridCalc: {
+        sectionFootprint: "Bina oturumu",
+        sectionFootprintHint: "Genel plan boyutları (metre)",
+        sectionBays: "Açıklık tercihleri",
+        sectionBaysHint: "Her eksen boyunca hedef kolon aralığı",
+        buildingWidthM: "Bina genişliği (m)",
+        buildingDepthM: "Bina derinliği (m)",
+        prefBayWidthM: "Tercih edilen açıklık genişliği (m)",
+        prefBayWidthHint: "X yönünde tipik kolon aralığı",
+        prefBayDepthM: "Tercih edilen açıklık derinliği (m)",
+        prefBayDepthHint: "Y yönünde tipik kolon aralığı",
+        structureType: "Yapı tipi",
+        structureTypeHint: "Gösterge L/d ve verimlilik bantları için",
+        baysX: "X yönünde açıklık sayısı",
+        baysY: "Y yönünde açıklık sayısı",
+        actualBayWidth: "Gerçek açıklık genişliği (m)",
+        actualBayDepth: "Gerçek açıklık derinliği (m)",
+        totalColumns: "Toplam kolon",
+        recommendedSlabSpan: "Önerilen döşeme açıklığı (m)",
+        indicativeDepth: "Gösterge döşeme derinliği (cm)",
+        efficiency: {
+          optimal: "En uygun",
+          acceptable: "Kabul edilebilir",
+          review: "İnceleme gerekir",
+        },
+        ldIndicative: "Gösterge açıklık/derinlik (L/d ≈ {v})",
+        note: "Yalnızca gösterge: verimlilik, yöneten döşeme açıklığının tipik sınırlarla ilişkisi ve ayarlanan açıklıkların hedeflere yakınlığına dayanır (statik mühendisle doğrulayın).",
+        enterValid: "Pozitif bina boyutları ve tercih edilen açıklık ölçüleri girin.",
+        dimXLabel: "{n} × {v} m",
+        dimYLabel: "{n} × {v} m",
+        planDiagram: "Üst görünüm (kolon ızgarası)",
       },
       uValue: {
         compliance: {

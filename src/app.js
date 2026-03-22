@@ -1327,6 +1327,17 @@ const h = React.createElement;
         return h("svg", c, h("path", { ...stroke, d: "M4 16L20 8M4 20h16" }));
       case "span":
         return h("svg", c, h("path", { ...stroke, d: "M4 18h16M8 18V10M16 18V10" }));
+      case "gridCalculator":
+        return h(
+          "svg",
+          c,
+          h("rect", { ...stroke, x: "4", y: "4", width: "16", height: "16", rx: "1" }),
+          h("path", { ...stroke, d: "M4 10h16M10 4v16" }),
+          h("circle", { ...stroke, fill: "currentColor", cx: "10", cy: "10", r: "1.25" }),
+          h("circle", { ...stroke, fill: "currentColor", cx: "16", cy: "10", r: "1.25" }),
+          h("circle", { ...stroke, fill: "currentColor", cx: "10", cy: "16", r: "1.25" }),
+          h("circle", { ...stroke, fill: "currentColor", cx: "16", cy: "16", r: "1.25" })
+        );
       case "siteCoverage":
         return h("svg", c, h("rect", { ...stroke, x: "3", y: "5", width: "18", height: "14", rx: "1" }), h("rect", { ...stroke, x: "8", y: "9", width: "8", height: "6", rx: "0.5" }));
       case "parking":
@@ -1447,9 +1458,10 @@ const h = React.createElement;
     ]);
   }
 
-  function Field({ label, children }) {
+  function Field({ label, hint, children }) {
     return h("label", { className: "block" }, [
       h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-2.5" }, label),
+      hint ? h("div", { className: "text-[10px] font-semibold text-[var(--st-muted)] mb-2 -mt-1 leading-relaxed" }, hint) : null,
       children,
     ]);
   }
@@ -2054,6 +2066,12 @@ const h = React.createElement;
         intro: "Estimate member depth, span-to-depth ratio, and indicative column or profile sizes from span and load assumptions.",
       },
       {
+        id: "gridCalculator",
+        label: "Structural Grid Calculator",
+        description: "Axis grid and structural bay planner",
+        intro: "Divide a rectangular footprint into structural bays, count columns, and check indicative slab span and span-to-depth efficiency.",
+      },
+      {
         id: "siteCoverage",
         label: "Site Coverage Calculator",
         description: "Plot ratio, coverage and floor area calculator",
@@ -2096,7 +2114,7 @@ const h = React.createElement;
         {
           id: "geometry",
           label: t("nav.geometry"),
-          toolIds: ["scale", "stair", "ramp", "span", "siteCoverage", "parking", "room"],
+          toolIds: ["scale", "stair", "ramp", "span", "gridCalculator", "siteCoverage", "parking", "room"],
         },
         { id: "compliance", label: t("nav.compliance"), toolIds: ["fireEscape"] },
         { id: "environment", label: t("nav.environment"), toolIds: ["daylight", "uValue"] },
@@ -2110,6 +2128,7 @@ const h = React.createElement;
       stair: "/stair-calculator",
       ramp: "/ramp-calculator",
       span: "/span-calculator",
+      gridCalculator: "/grid-calculator",
       room: "/room-program",
       parking: "/parking-calculator",
       daylight: "/daylight-calculator",
@@ -2123,6 +2142,7 @@ const h = React.createElement;
       if (p === "/") return "landing";
       if (p === "/scale-converter") return "scale";
       if (p === "/span-calculator") return "span";
+      if (p === "/grid-calculator") return "gridCalculator";
       if (p === "/stair-calculator") return "stair";
       if (p === "/ramp-calculator") return "ramp";
       if (p === "/room-program") return "room";
@@ -2197,6 +2217,12 @@ const h = React.createElement;
     const [spanLengthM, setSpanLengthM] = useState("6");
     const [spanSystem, setSpanSystem] = useState("rc_flat"); // rc_flat | rc_beam | steel | timber
     const [spanLoad, setSpanLoad] = useState("medium"); // light | medium | heavy
+
+    const [gridBuildingWidthM, setGridBuildingWidthM] = useState("24");
+    const [gridBuildingDepthM, setGridBuildingDepthM] = useState("18");
+    const [gridPrefBayWidthM, setGridPrefBayWidthM] = useState("8");
+    const [gridPrefBayDepthM, setGridPrefBayDepthM] = useState("6");
+    const [gridStructureType, setGridStructureType] = useState("rc"); // rc | steel | timber
 
     const [roomProgramTypeId, setRoomProgramTypeId] = useState("bedroom");
     const [roomProgramAreaStr, setRoomProgramAreaStr] = useState("12.0");
@@ -2615,6 +2641,75 @@ const h = React.createElement;
         loadLabel,
       };
     }, [spanLengthM, spanSystem, spanLoad, t, ti]);
+
+    const gridResult = useMemo(() => {
+      const W = Number(gridBuildingWidthM);
+      const D = Number(gridBuildingDepthM);
+      const bx = Number(gridPrefBayWidthM);
+      const by = Number(gridPrefBayDepthM);
+      if (![W, D, bx, by].every((n) => Number.isFinite(n) && n > 0)) return null;
+
+      const nx = Math.max(1, Math.round(W / bx));
+      const ny = Math.max(1, Math.round(D / by));
+      const rawAx = W / nx;
+      const rawAy = D / ny;
+      const round1 = (x) => Math.round(x * 10) / 10;
+      const actualBayW = round1(rawAx);
+      const actualBayD = round1(rawAy);
+      const totalColumns = (nx + 1) * (ny + 1);
+      const slabSpanM = round1(Math.max(actualBayW, actualBayD));
+
+      const ldDivisor = gridStructureType === "rc" ? 28 : gridStructureType === "steel" ? 20 : 15;
+      const indicativeDepthCm = round1((slabSpanM * 100) / ldDivisor);
+      const ldRatioUsed = ldDivisor;
+
+      const meanBayRelErr =
+        (Math.abs(actualBayW - bx) / bx + Math.abs(actualBayD - by) / by) / 2;
+
+      const spanLimits = {
+        rc: { opt: 7.5, acc: 11 },
+        steel: { opt: 12, acc: 16 },
+        timber: { opt: 5, acc: 7.5 },
+      };
+      const lim = spanLimits[gridStructureType] || spanLimits.rc;
+      let tier = 0;
+      if (slabSpanM > lim.acc) tier = 2;
+      else if (slabSpanM > lim.opt) tier = 1;
+      if (meanBayRelErr > 0.35) tier = 2;
+      else if (meanBayRelErr > 0.18) tier = Math.min(2, tier + 1);
+
+      const efficiencyKeys = ["optimal", "acceptable", "review"];
+      const efficiencyKey = efficiencyKeys[tier];
+      const efficiencyLabel = t(`gridCalc.efficiency.${efficiencyKey}`);
+
+      const structureLabel = t(`options.gridStructure.${gridStructureType}`);
+
+      return {
+        widthM: W,
+        depthM: D,
+        prefBayW: bx,
+        prefBayD: by,
+        nx,
+        ny,
+        actualBayW,
+        actualBayD,
+        totalColumns,
+        slabSpanM,
+        ldRatioUsed,
+        indicativeDepthCm,
+        efficiencyKey,
+        efficiencyLabel,
+        structureLabel,
+        meanBayRelErr,
+      };
+    }, [
+      gridBuildingWidthM,
+      gridBuildingDepthM,
+      gridPrefBayWidthM,
+      gridPrefBayDepthM,
+      gridStructureType,
+      t,
+    ]);
 
     const parkingResult = useMemo(() => {
       const totalArea = Number(parkingAreaM2);
@@ -3504,6 +3599,29 @@ const h = React.createElement;
         }
         return;
       }
+      if (activeTool === "gridCalculator") {
+        const text = formatGridCalculatorCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (!anyValuePresent) {
         setStatus({ state: "warn", text: "Nothing to copy yet." });
         return;
@@ -3834,6 +3952,35 @@ const h = React.createElement;
       return lines.join("\n");
     }
 
+    function formatGridCalculatorCopyText() {
+      const lines = [t("tools.gridCalculator.label"), "", `Timestamp: ${new Date().toLocaleString()}`, ""];
+      if (!gridResult) {
+        lines.push(t("gridCalc.enterValid"));
+        return lines.join("\n");
+      }
+      const r = gridResult;
+      lines.push(t("common.inputs"));
+      lines.push(`- ${t("gridCalc.buildingWidthM")}: ${formatSmartNumber(r.widthM)} m`);
+      lines.push(`- ${t("gridCalc.buildingDepthM")}: ${formatSmartNumber(r.depthM)} m`);
+      lines.push(`- ${t("gridCalc.prefBayWidthM")}: ${formatSmartNumber(r.prefBayW)} m`);
+      lines.push(`- ${t("gridCalc.prefBayDepthM")}: ${formatSmartNumber(r.prefBayD)} m`);
+      lines.push(`- ${t("gridCalc.structureType")}: ${r.structureLabel}`);
+      lines.push("");
+      lines.push(t("common.autoCalculate"));
+      lines.push(ti("export.gridCalc.baysXLine", { v: formatInteger(r.nx) }));
+      lines.push(ti("export.gridCalc.baysYLine", { v: formatInteger(r.ny) }));
+      lines.push(ti("export.gridCalc.actualBayWLine", { v: formatSmartNumber(r.actualBayW) }));
+      lines.push(ti("export.gridCalc.actualBayDLine", { v: formatSmartNumber(r.actualBayD) }));
+      lines.push(ti("export.gridCalc.columnsLine", { v: formatInteger(r.totalColumns) }));
+      lines.push(ti("export.gridCalc.slabSpanLine", { v: formatSmartNumber(r.slabSpanM) }));
+      lines.push(ti("export.gridCalc.ldLine", { v: formatSmartNumber(r.ldRatioUsed) }));
+      lines.push(ti("export.gridCalc.depthLine", { v: formatSmartNumber(r.indicativeDepthCm) }));
+      lines.push(ti("export.gridCalc.efficiencyLine", { v: r.efficiencyLabel }));
+      lines.push("");
+      lines.push(t("gridCalc.note"));
+      return lines.join("\n");
+    }
+
     function buildPDFLines(projectName) {
       if (activeTool === "uValue") {
         const timestamp = new Date().toLocaleString();
@@ -4019,6 +4166,39 @@ const h = React.createElement;
         }
         return lines;
       }
+      if (activeTool === "gridCalculator") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push(t("tools.gridCalculator.label"));
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!gridResult) {
+          lines.push(t("gridCalc.enterValid"));
+          return lines;
+        }
+        const r = gridResult;
+        lines.push(t("common.inputs"));
+        lines.push(`- ${t("gridCalc.buildingWidthM")}: ${formatSmartNumber(r.widthM)} m`);
+        lines.push(`- ${t("gridCalc.buildingDepthM")}: ${formatSmartNumber(r.depthM)} m`);
+        lines.push(`- ${t("gridCalc.prefBayWidthM")}: ${formatSmartNumber(r.prefBayW)} m`);
+        lines.push(`- ${t("gridCalc.prefBayDepthM")}: ${formatSmartNumber(r.prefBayD)} m`);
+        lines.push(`- ${t("gridCalc.structureType")}: ${r.structureLabel}`);
+        lines.push("");
+        lines.push(t("common.autoCalculate"));
+        lines.push(ti("export.gridCalc.baysXLine", { v: formatInteger(r.nx) }));
+        lines.push(ti("export.gridCalc.baysYLine", { v: formatInteger(r.ny) }));
+        lines.push(ti("export.gridCalc.actualBayWLine", { v: formatSmartNumber(r.actualBayW) }));
+        lines.push(ti("export.gridCalc.actualBayDLine", { v: formatSmartNumber(r.actualBayD) }));
+        lines.push(ti("export.gridCalc.columnsLine", { v: formatInteger(r.totalColumns) }));
+        lines.push(ti("export.gridCalc.slabSpanLine", { v: formatSmartNumber(r.slabSpanM) }));
+        lines.push(ti("export.gridCalc.ldLine", { v: formatSmartNumber(r.ldRatioUsed) }));
+        lines.push(ti("export.gridCalc.depthLine", { v: formatSmartNumber(r.indicativeDepthCm) }));
+        lines.push(ti("export.gridCalc.efficiencyLine", { v: r.efficiencyLabel }));
+        lines.push("");
+        lines.push(t("gridCalc.note"));
+        return lines;
+      }
       if (activeTool === "siteCoverage") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -4122,6 +4302,7 @@ const h = React.createElement;
         doc.setFontSize(12);
         const yMax =
           activeTool === "span" ||
+          activeTool === "gridCalculator" ||
           activeTool === "parking" ||
           activeTool === "daylight" ||
           activeTool === "fireEscape" ||
@@ -4138,6 +4319,52 @@ const h = React.createElement;
             y += chunk.trim() === "" ? 12 : 14;
           });
         });
+
+        if (activeTool === "gridCalculator" && gridResult) {
+          y += 10;
+          if (y < 640) {
+            const gr = gridResult;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text(t("gridCalc.planDiagram"), marginX, y);
+            y += 16;
+            doc.setFont("helvetica", "normal");
+            const sx = marginX;
+            const sy = y;
+            const maxSide = 210;
+            const sc = maxSide / Math.max(gr.widthM, gr.depthM);
+            const bw = gr.widthM * sc;
+            const bh = gr.depthM * sc;
+            doc.setDrawColor(40);
+            doc.setLineWidth(2.5);
+            doc.rect(sx, sy, bw, bh);
+            doc.setLineWidth(0.4);
+            doc.setDrawColor(120);
+            for (let i = 1; i < gr.nx; i++) {
+              const xi = sx + (i * bw) / gr.nx;
+              doc.line(xi, sy, xi, sy + bh);
+            }
+            for (let j = 1; j < gr.ny; j++) {
+              const yj = sy + (j * bh) / gr.ny;
+              doc.line(sx, yj, sx + bw, yj);
+            }
+            doc.setFillColor(30, 30, 35);
+            for (let ix = 0; ix <= gr.nx; ix++) {
+              for (let iy = 0; iy <= gr.ny; iy++) {
+                const cx = sx + (ix * bw) / gr.nx;
+                const cy = sy + (iy * bh) / gr.ny;
+                doc.circle(cx, cy, 2.2, "F");
+              }
+            }
+            doc.setDrawColor(0);
+            doc.setTextColor(55);
+            doc.setFontSize(7);
+            doc.text(ti("gridCalc.dimXLabel", { n: gr.nx, v: formatSmartNumber(gr.actualBayW) }), sx, sy + bh + 14);
+            doc.text(ti("gridCalc.dimYLabel", { n: gr.ny, v: formatSmartNumber(gr.actualBayD) }), sx + bw + 6, sy + bh / 2);
+            doc.setTextColor(0);
+            y += bh + 26;
+          }
+        }
 
         if (activeTool === "span" && spanResult) {
           y += 10;
@@ -4358,19 +4585,21 @@ const h = React.createElement;
         const suffix =
           activeTool === "span"
             ? "span-calculator"
-            : activeTool === "room"
-              ? "room-program"
-              : activeTool === "parking"
-                ? "parking-calculator"
-                : activeTool === "daylight"
-                  ? "daylight-calculator"
-                  : activeTool === "fireEscape"
-                    ? "fire-escape-calculator"
-                    : activeTool === "uValue"
-                      ? "u-value-calculator"
-                      : activeTool === "siteCoverage"
-                        ? "site-coverage-calculator"
-                        : "scale-converter";
+            : activeTool === "gridCalculator"
+              ? "grid-calculator"
+              : activeTool === "room"
+                ? "room-program"
+                : activeTool === "parking"
+                  ? "parking-calculator"
+                  : activeTool === "daylight"
+                    ? "daylight-calculator"
+                    : activeTool === "fireEscape"
+                      ? "fire-escape-calculator"
+                      : activeTool === "uValue"
+                        ? "u-value-calculator"
+                        : activeTool === "siteCoverage"
+                          ? "site-coverage-calculator"
+                          : "scale-converter";
         doc.save(`${safeName}-${suffix}-${ts}.pdf`);
         setStatus({ state: "ok", text: "PDF exported." });
         setPdfModalOpen(false);
@@ -6346,6 +6575,309 @@ const h = React.createElement;
         ]);
       }
 
+      if (activeTool === "gridCalculator") {
+        const gr = gridResult;
+        const efficiencyBadgeClass =
+          gr && gr.efficiencyKey === "optimal"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
+            : gr && gr.efficiencyKey === "acceptable"
+              ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
+              : gr
+                ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
+
+        const padL = 56;
+        const padT = 32;
+        const padR = 56;
+        const padB = 52;
+        const drawW = 288;
+        const drawH = 200;
+        let diagramEl = null;
+        if (gr) {
+          const W = gr.widthM;
+          const D = gr.depthM;
+          const nx = gr.nx;
+          const ny = gr.ny;
+          const s = Math.min(drawW / W, drawH / D);
+          const rw = W * s;
+          const rh = D * s;
+          const ox = padL + (drawW - rw) / 2;
+          const oy = padT + (drawH - rh) / 2;
+          const vbW = padL + drawW + padR;
+          const vbH = padT + drawH + padB;
+          const gridLineEls = [];
+          for (let i = 1; i < nx; i++) {
+            const xi = ox + (i * rw) / nx;
+            gridLineEls.push(
+              h("line", {
+                key: `gv${i}`,
+                x1: xi,
+                y1: oy,
+                x2: xi,
+                y2: oy + rh,
+                stroke: "currentColor",
+                strokeWidth: 1,
+                opacity: 0.35,
+              })
+            );
+          }
+          for (let j = 1; j < ny; j++) {
+            const yj = oy + (j * rh) / ny;
+            gridLineEls.push(
+              h("line", {
+                key: `gh${j}`,
+                x1: ox,
+                y1: yj,
+                x2: ox + rw,
+                y2: yj,
+                stroke: "currentColor",
+                strokeWidth: 1,
+                opacity: 0.35,
+              })
+            );
+          }
+          const dotEls = [];
+          for (let ix = 0; ix <= nx; ix++) {
+            for (let iy = 0; iy <= ny; iy++) {
+              const cx = ox + (ix * rw) / nx;
+              const cy = oy + (iy * rh) / ny;
+              dotEls.push(
+                h("circle", {
+                  key: `c${ix}-${iy}`,
+                  cx,
+                  cy,
+                  r: 4,
+                  className: "fill-[var(--st-fg)]",
+                })
+              );
+            }
+          }
+          diagramEl = h(
+            "svg",
+            {
+              viewBox: `0 0 ${vbW} ${vbH}`,
+              className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
+              "aria-hidden": true,
+            },
+            [
+              ...gridLineEls,
+              h("rect", {
+                x: ox,
+                y: oy,
+                width: rw,
+                height: rh,
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: 5,
+                rx: 1,
+              }),
+              ...dotEls,
+              h(
+                "text",
+                {
+                  x: ox + rw / 2,
+                  y: oy + rh + 28,
+                  textAnchor: "middle",
+                  className: "fill-current text-[10px] font-extrabold",
+                  style: { fontFamily: "system-ui, sans-serif" },
+                },
+                ti("gridCalc.dimXLabel", { n: nx, v: formatSmartNumber(gr.actualBayW) })
+              ),
+              h(
+                "text",
+                {
+                  x: padL - 8,
+                  y: oy + rh / 2,
+                  textAnchor: "middle",
+                  transform: `rotate(-90 ${padL - 8} ${oy + rh / 2})`,
+                  className: "fill-current text-[10px] font-extrabold",
+                  style: { fontFamily: "system-ui, sans-serif" },
+                },
+                ti("gridCalc.dimYLabel", { n: ny, v: formatSmartNumber(gr.actualBayD) })
+              ),
+            ]
+          );
+        } else {
+          diagramEl = h(
+            "div",
+            {
+              className:
+                "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
+            },
+            t("gridCalc.enterValid")
+          );
+        }
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: t("tools.gridCalculator.label"),
+            hint: t("common.inputs"),
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: t("gridCalc.sectionFootprint"),
+                hint: t("gridCalc.sectionFootprintHint"),
+              }),
+              h(Field, {
+                label: t("gridCalc.buildingWidthM"),
+                children: h(InputBase, {
+                  value: gridBuildingWidthM,
+                  onChange: setGridBuildingWidthM,
+                  placeholder: "e.g., 24",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: t("gridCalc.buildingDepthM"),
+                children: h(InputBase, {
+                  value: gridBuildingDepthM,
+                  onChange: setGridBuildingDepthM,
+                  placeholder: "e.g., 18",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(SectionTitle, {
+                label: t("gridCalc.sectionBays"),
+                hint: t("gridCalc.sectionBaysHint"),
+              }),
+              h(Field, {
+                label: t("gridCalc.prefBayWidthM"),
+                hint: t("gridCalc.prefBayWidthHint"),
+                children: h(InputBase, {
+                  value: gridPrefBayWidthM,
+                  onChange: setGridPrefBayWidthM,
+                  placeholder: "e.g., 8",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: t("gridCalc.prefBayDepthM"),
+                hint: t("gridCalc.prefBayDepthHint"),
+                children: h(InputBase, {
+                  value: gridPrefBayDepthM,
+                  onChange: setGridPrefBayDepthM,
+                  placeholder: "e.g., 6",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(SectionTitle, {
+                label: t("gridCalc.structureType"),
+                hint: t("gridCalc.structureTypeHint"),
+              }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: gridStructureType === "rc", onClick: () => setGridStructureType("rc") }, t("options.gridStructure.rc")),
+                h(ValueButton, { active: gridStructureType === "steel", onClick: () => setGridStructureType("steel") }, t("options.gridStructure.steel")),
+                h(ValueButton, { active: gridStructureType === "timber", onClick: () => setGridStructureType("timber") }, t("options.gridStructure.timber")),
+              ]),
+            ]),
+          }),
+          h(Card, {
+            title: t("common.results"),
+            hint: t("common.autoCalculate"),
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h("div", { className: "space-y-2" }, [
+                h(
+                  "div",
+                  { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" },
+                  t("gridCalc.planDiagram")
+                ),
+                diagramEl,
+              ]),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(
+                  "div",
+                  {
+                    className: classNames(
+                      "inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase",
+                      efficiencyBadgeClass
+                    ),
+                  },
+                  gr ? gr.efficiencyLabel : "—"
+                ),
+              ]),
+              gr
+                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed" }, [
+                    h("div", {}, ti("gridCalc.ldIndicative", { v: formatSmartNumber(gr.ldRatioUsed) })),
+                    h("div", {}, t("gridCalc.note")),
+                  ])
+                : null,
+              h(ValueBlock, {
+                label: t("gridCalc.baysX"),
+                valueText: gr ? formatInteger(gr.nx) : "—",
+                big: true,
+                integerValue: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.baysY"),
+                valueText: gr ? formatInteger(gr.ny) : "—",
+                big: true,
+                integerValue: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.actualBayWidth"),
+                valueText: gr ? formatSmartNumber(gr.actualBayW) : "—",
+                unitText: t("common.unitM"),
+                big: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.actualBayDepth"),
+                valueText: gr ? formatSmartNumber(gr.actualBayD) : "—",
+                unitText: t("common.unitM"),
+                big: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.totalColumns"),
+                valueText: gr ? formatInteger(gr.totalColumns) : "—",
+                big: true,
+                integerValue: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.recommendedSlabSpan"),
+                valueText: gr ? formatSmartNumber(gr.slabSpanM) : "—",
+                unitText: t("common.unitM"),
+                big: true,
+              }),
+              h(ValueBlock, {
+                label: t("gridCalc.indicativeDepth"),
+                valueText: gr ? formatSmartNumber(gr.indicativeDepthCm) : "—",
+                unitText: t("common.unitCm"),
+                big: true,
+              }),
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
+                  },
+                  t("common.copyAsText")
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
+                  },
+                  t("common.exportPdf")
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
         h(Card, {
           title: t("common.inputs"),
@@ -6426,6 +6958,7 @@ const h = React.createElement;
       "stair",
       "ramp",
       "span",
+      "gridCalculator",
       "siteCoverage",
       "parking",
       "room",
@@ -6662,7 +7195,9 @@ const h = React.createElement;
                     { className: "mt-3 text-xs text-[var(--st-muted)]" },
                     activeTool === "span"
                       ? t("pdf.spanCross")
-                      : activeTool === "room"
+                      : activeTool === "gridCalculator"
+                        ? t("pdf.gridPlan")
+                        : activeTool === "room"
                         ? t("pdf.roomTable")
                         : activeTool === "parking"
                           ? t("pdf.parkingTop")
