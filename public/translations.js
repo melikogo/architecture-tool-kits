@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Structura — EN / TR UI strings (loaded before script.js)
  */
 (function () {
   window.STRUCTURA_TRANSLATIONS = {
     en: {
       landing: {
-        tagline: "Professional tools for architects and engineers",
+        tagline: "Professional tools for architects and engineers — from studio to site.",
         openToolkit: "Open Toolkit",
         allTools: "All Tools",
         aboutSr: "About Structura",
@@ -25,8 +25,6 @@
         },
         contactHeading: "Get in touch",
         contactSubtext: "Found a bug? Have a suggestion? Want to collaborate?",
-        contactTagline:
-          "Designed and developed Structura for architects and engineers — from quick checks in studio to practical use on site.",
         contactEmail: "melihzdemirr@gmail.com",
         contactLinkedIn: "LinkedIn",
       },
@@ -743,7 +741,7 @@
     },
     tr: {
       landing: {
-        tagline: "Mimarlar ve mühendisler için profesyonel araçlar",
+        tagline: "Mimarlar ve mühendisler için profesyonel araçlar — stüdyodan şantiyeye.",
         openToolkit: "Araçları Aç",
         allTools: "Tüm Araçlar",
         aboutSr: "Structura hakkında",
@@ -763,8 +761,6 @@
         },
         contactHeading: "İletişime geç",
         contactSubtext: "Hata mı buldunuz? Öneriniz mi var? İş birliği yapmak ister misiniz?",
-        contactTagline:
-          "Mimarlar ve mühendisler için tasarlandı — stüdyodan şantiyeye, her hesap için.",
         contactEmail: "melihzdemirr@gmail.com",
         contactLinkedIn: "LinkedIn",
       },
