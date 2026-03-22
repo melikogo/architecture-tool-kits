@@ -1153,13 +1153,13 @@ const h = React.createElement;
     );
 
     return h("div", { ref: wrapRef, className: "relative z-[1] max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
-      h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
+      h("header", { className: "pt-5 flex justify-end shrink-0" }, navToggles),
       h(
         "section",
-        { className: "structura-hero-main-section flex-1 flex flex-col min-h-0 w-full max-md:pb-5 md:pb-5" },
+        { className: "structura-hero-main-section flex-1 flex flex-col min-h-0 w-full max-md:pb-4 md:pb-4" },
         h("div", {
           className:
-            "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 flex-1 min-h-0 w-full items-stretch",
+            "grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 lg:gap-12 flex-1 min-h-0 w-full items-stretch",
         }, [
           h("div", { className: "min-w-0 order-1 flex flex-col justify-center" }, [
             h("div", { className: "min-w-0" }, [
@@ -1177,7 +1177,7 @@ const h = React.createElement;
               "p",
               {
                 "data-hero-tagline": true,
-                className: "mt-6 text-[17px] md:text-[18px] text-[var(--st-muted)] font-normal max-w-xl leading-relaxed",
+                className: "mt-5 text-[17px] md:text-[18px] text-[var(--st-muted)] font-normal max-w-xl leading-relaxed",
                 style: { willChange: "transform, opacity" },
               },
               tagline
@@ -1187,7 +1187,7 @@ const h = React.createElement;
               {
                 "data-hero-cta": true,
                 type: "button",
-                className: "structura-hero-cta mt-10 rounded-2xl border-0 cursor-pointer bg-transparent p-0",
+                className: "structura-hero-cta mt-8 rounded-2xl border-0 cursor-pointer bg-transparent p-0",
                 style: { willChange: "opacity" },
                 onClick: onOpenToolkit,
               },
@@ -1197,7 +1197,7 @@ const h = React.createElement;
               ])
             ),
           ]),
-          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[160px] md:min-h-0 py-4 md:py-0 min-w-0 overflow-hidden" }, [
+          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[160px] md:min-h-0 py-3 md:py-0 min-w-0 overflow-hidden" }, [
             h("div", { className: "structura-hero-floorplan-wrap w-full" }, [h(LandingHeroFloorPlanSvg, null)]),
           ]),
         ])
@@ -1246,9 +1246,9 @@ const h = React.createElement;
 
     return h(
       "section",
-      { id: "structura-tool-grid", ref: sectionRef, className: "max-w-6xl mx-auto w-full px-4 pb-16 md:pb-24" },
+      { id: "structura-tool-grid", ref: sectionRef, className: "max-w-6xl mx-auto w-full px-4 pb-0" },
       [
-        h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-8" }, title),
+        h("h2", { className: "font-display text-xl md:text-2xl font-bold text-[var(--st-fg)] mb-6" }, title),
         h(
           "div",
           { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" },
@@ -1340,7 +1340,7 @@ const h = React.createElement;
         id: "structura-about",
         "aria-labelledby": "structura-about-heading",
         ref: sectionRef,
-        className: "max-w-6xl mx-auto w-full px-4 pt-0 pb-12 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+        className: "max-w-6xl mx-auto w-full px-4 pt-0 pb-0 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
       },
       [h("h2", { id: "structura-about-heading", className: "sr-only" }, aboutHeading), columnsContent]
     );
@@ -1375,8 +1375,7 @@ const h = React.createElement;
       {
         id: "structura-contact",
         "aria-labelledby": "structura-contact-heading",
-        className:
-          "max-w-6xl mx-auto w-full px-4 pt-12 md:pt-16 pb-12 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+        className: "max-w-6xl mx-auto w-full px-4 py-0 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
       },
       [
         h(
@@ -1389,8 +1388,16 @@ const h = React.createElement;
         ),
         h(
           "p",
-          { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium text-center max-w-xl mx-auto mb-8" },
+          { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium text-center max-w-xl mx-auto mb-3" },
           t("landing.contactSubtext")
+        ),
+        h(
+          "p",
+          {
+            className:
+              "text-[13px] sm:text-sm italic text-[var(--st-muted)]/90 text-center max-w-xl mx-auto mb-6 leading-relaxed",
+          },
+          t("landing.contactTagline")
         ),
         h(
           "div",
@@ -7948,13 +7955,12 @@ const h = React.createElement;
     }).filter(Boolean);
 
     if (activeTool === "landing") {
-      const aboutGrid = h("div", { className: "space-y-0" }, [
-        h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-14" }, [
+      const aboutGrid = h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 lg:gap-10" }, [
           h(
             "div",
             {
               "data-about-col": "1",
-              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+              className: "pt-4 md:pt-5 border-t border-[var(--st-border)]",
             },
             [
               h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col1Label")),
@@ -7966,7 +7972,7 @@ const h = React.createElement;
             "div",
             {
               "data-about-col": "2",
-              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+              className: "pt-4 md:pt-5 border-t border-[var(--st-border)]",
             },
             [
               h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col2Label")),
@@ -7978,7 +7984,7 @@ const h = React.createElement;
             "div",
             {
               "data-about-col": "3",
-              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+              className: "pt-4 md:pt-5 border-t border-[var(--st-border)]",
             },
             [
               h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col3Label")),
@@ -7986,31 +7992,6 @@ const h = React.createElement;
               h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col3Body")),
             ]
           ),
-        ]),
-        h(
-          "div",
-          {
-            "data-about-col": "author",
-            className: "pt-10 md:pt-12 border-t border-[var(--st-border)] text-center max-w-lg mx-auto",
-          },
-          [
-            h("div", { className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.aboutAuthorLabel")),
-            h("h3", { className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.aboutAuthorName")),
-            h("p", { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium mb-5" }, t("landing.aboutAuthorBody")),
-            h(
-              "a",
-              {
-                href: AUTHOR_LINKEDIN_URL,
-                target: "_blank",
-                rel: "noopener noreferrer",
-                className:
-                  "inline-flex items-center justify-center gap-2.5 min-h-[48px] px-5 rounded-2xl border-2 border-[#2563EB] text-[#2563EB] dark:text-blue-400 dark:border-blue-400 font-semibold text-sm transition-colors duration-150 hover:bg-[var(--st-accent)] hover:text-white hover:border-[var(--st-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--st-bg)]",
-                "aria-label": t("landing.contactLinkedIn"),
-              },
-              [h(LinkedInBrandIcon, { className: "shrink-0 w-5 h-5" }), t("landing.contactLinkedIn")]
-            ),
-          ]
-        ),
       ]);
 
       return h("div", { className: "min-h-screen flex flex-col bg-[var(--st-bg)] text-[var(--st-fg)]" }, [
@@ -8028,28 +8009,30 @@ const h = React.createElement;
             onOpenToolkit: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
           }),
         ]),
-        h(LandingAboutSection, {
-          aboutHeading: t("landing.aboutSr"),
-          columnsContent: aboutGrid,
-          depsKey: lang,
-        }),
-        h(LandingToolGridSection, {
-          title: t("landing.allTools"),
-          landingToolsList,
-          navigateToTool,
-          LandingToolIcon,
-          lang,
-        }),
-        h(LandingContactSection, { t }),
-        h(GlobalDisclaimerBanner, null),
-        h("footer", { className: "mt-auto pt-10 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
-          h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
-          h(
-            "div",
-            { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-xl mx-auto leading-relaxed opacity-95" },
-            t("footer.rights")
-          ),
-          h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, t("footer.yearLine")),
+        h("div", { className: "flex flex-col gap-[60px] flex-1 w-full" }, [
+          h(LandingAboutSection, {
+            aboutHeading: t("landing.aboutSr"),
+            columnsContent: aboutGrid,
+            depsKey: lang,
+          }),
+          h(LandingToolGridSection, {
+            title: t("landing.allTools"),
+            landingToolsList,
+            navigateToTool,
+            LandingToolIcon,
+            lang,
+          }),
+          h(LandingContactSection, { t }),
+          h(GlobalDisclaimerBanner, null),
+          h("footer", { className: "mt-auto pt-0 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
+            h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
+            h(
+              "div",
+              { className: "mt-3 text-[11px] text-[var(--st-muted)] max-w-xl mx-auto leading-relaxed opacity-95" },
+              t("footer.rights")
+            ),
+            h("div", { className: "mt-2 text-[10px] font-medium text-[var(--st-muted)] opacity-80" }, t("footer.yearLine")),
+          ]),
         ]),
       ]);
     }
