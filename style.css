@@ -30,7 +30,9 @@ html.dark {
 .structura-hero-shell {
   position: relative;
   background: var(--st-bg);
-  min-height: min(56vh, 520px);
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 

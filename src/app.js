@@ -453,9 +453,9 @@ const h = React.createElement;
       )
     );
 
-    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full px-4" }, [
-      h("header", { className: "pt-6 flex justify-end" }, navToggles),
-      h("section", { className: "pt-4 pb-10 md:pt-10 md:pb-14" }, [
+    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full px-4 flex flex-col flex-1 min-h-0" }, [
+      h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
+      h("section", { className: "flex-1 flex flex-col justify-center pb-[60px] min-h-0" }, [
         h(
           "h1",
           {
@@ -614,7 +614,7 @@ const h = React.createElement;
         id: "structura-about",
         "aria-labelledby": "structura-about-heading",
         ref: sectionRef,
-        className: "max-w-6xl mx-auto w-full px-4 py-14 md:py-20 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+        className: "max-w-6xl mx-auto w-full px-4 pt-8 pb-12 md:pt-10 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
       },
       [h("h2", { id: "structura-about-heading", className: "sr-only" }, aboutHeading), columnsContent]
     );
