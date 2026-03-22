@@ -1152,6 +1152,7 @@ const h = React.createElement;
 
     return h("div", { ref: wrapRef, className: "relative z-[1] max-w-6xl mx-auto w-full min-w-0 px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
+      h(GlobalDisclaimerBanner, { fullBleed: false }),
       h(
         "section",
         { className: "structura-hero-main-section flex-1 flex flex-col min-h-0 w-full max-md:pb-5 md:pb-5" },
@@ -2053,6 +2054,66 @@ const h = React.createElement;
         ),
       ]),
     ]);
+  }
+
+  const GLOBAL_DISCLAIMER_DISMISSED_KEY = "structura_global_disclaimer_dismissed";
+
+  /** Disclaimer below top nav; dismiss persists in localStorage. fullBleed=false inside overflow:hidden hero shell. */
+  function GlobalDisclaimerBanner({ fullBleed = true }) {
+    const { t } = useI18n();
+    const [visible, setVisible] = useState(true);
+    const [hydrated, setHydrated] = useState(false);
+
+    useEffect(() => {
+      try {
+        if (localStorage.getItem(GLOBAL_DISCLAIMER_DISMISSED_KEY) === "1") setVisible(false);
+      } catch (_e) {
+        /* ignore */
+      }
+      setHydrated(true);
+    }, []);
+
+    const dismiss = useCallback(() => {
+      setVisible(false);
+      try {
+        localStorage.setItem(GLOBAL_DISCLAIMER_DISMISSED_KEY, "1");
+      } catch (_e) {
+        /* ignore */
+      }
+    }, []);
+
+    if (!hydrated || !visible) return null;
+
+    const widthCls = fullBleed
+      ? "w-screen max-w-[100vw] relative left-1/2 -translate-x-1/2 box-border"
+      : "w-full max-w-full rounded-xl";
+
+    return h(
+      "div",
+      {
+        className:
+          "structura-global-disclaimer flex items-start gap-2 sm:gap-3 py-2 px-3 sm:px-4 border-b border-[var(--st-accent)] text-[12px] leading-snug font-medium " +
+          "bg-[#EFF6FF] text-slate-600 dark:bg-[#0F172A] dark:text-slate-400 " +
+          widthCls +
+          (fullBleed ? "" : " mt-3"),
+        role: "note",
+      },
+      [
+        h("span", { className: "shrink-0 select-none text-[13px] leading-tight mt-px opacity-90", "aria-hidden": true }, "ℹ"),
+        h("p", { className: "flex-1 min-w-0 pr-1" }, t("common.globalDisclaimer")),
+        h(
+          "button",
+          {
+            type: "button",
+            onClick: dismiss,
+            className:
+              "shrink-0 min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/[0.06] dark:hover:bg-white/10 font-bold text-lg leading-none transition-colors",
+            "aria-label": t("common.dismissDisclaimer"),
+          },
+          "×"
+        ),
+      ]
+    );
   }
 
   function App() {
@@ -7912,6 +7973,7 @@ const h = React.createElement;
             ]),
             h("p", { className: "mt-5 max-w-3xl text-[15px] text-[var(--st-muted)] font-medium leading-relaxed" }, activeToolMeta.intro),
           ]),
+          h(GlobalDisclaimerBanner, null),
 
           h("div", { className: "grid grid-cols-1 lg:grid-cols-[290px_minmax(0,1fr)] gap-7 items-start" }, [
             h(

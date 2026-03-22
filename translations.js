@@ -199,6 +199,9 @@
         actualRiserHeight: "Actual riser height",
         totalRunLength: "Total run length",
         suggestedTreadDepth: "Suggested tread depth",
+        globalDisclaimer:
+          "All calculations are based on international standards (IBC 2021, Eurocode, ACI 318, ASHRAE 90.1, EN 17037, ADA). Results are indicative and should be verified by a licensed professional.",
+        dismissDisclaimer: "Dismiss disclaimer",
       },
       tools: {
         scale: {
@@ -929,6 +932,9 @@
         actualRiserHeight: "Gerçek basamak yükselmesi",
         totalRunLength: "Toplam kaçış uzunluğu",
         suggestedTreadDepth: "Önerilen basamak derinliği",
+        globalDisclaimer:
+          "Tüm hesaplamalar uluslararası standartlara (IBC 2021, Eurocode, ACI 318, ASHRAE 90.1, EN 17037, ADA) dayanır. Sonuçlar gösterge niteliğindedir; lisanslı bir uzmanla doğrulanmalıdır.",
+        dismissDisclaimer: "Uyarıyı kapat",
       },
       tools: {
         scale: {
