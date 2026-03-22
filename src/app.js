@@ -301,7 +301,14 @@ const h = React.createElement;
     return rounded.toFixed(1);
   }
 
-  function AnimatedNumberText({ valueText, className }) {
+  /** Whole numbers only (steps, exits, parking spaces, etc.) — no trailing “.0” */
+  function formatInteger(n) {
+    if (n == null || !Number.isFinite(n)) return "—";
+    return String(Math.round(n));
+  }
+
+  function AnimatedNumberText({ valueText, className, integer }) {
+    const fmt = integer ? formatInteger : formatSmartNumber;
     const [display, setDisplay] = useState(valueText);
     const rootRef = useRef(null);
     const tweenProxyRef = useRef({ v: 0 });
@@ -330,12 +337,12 @@ const h = React.createElement;
             v: num,
             duration: 0.3,
             ease: "power2.out",
-            onUpdate: () => setDisplay(formatSmartNumber(proxy.v)),
-            onComplete: () => setDisplay(formatSmartNumber(num)),
+            onUpdate: () => setDisplay(fmt(proxy.v)),
+            onComplete: () => setDisplay(fmt(num)),
           }
         );
       },
-      { scope: rootRef, dependencies: [valueText] }
+      { scope: rootRef, dependencies: [valueText, integer] }
     );
     return h("div", { ref: rootRef, className }, display);
   }
@@ -1012,7 +1019,7 @@ const h = React.createElement;
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
       h(
         "section",
-        { className: "flex-1 flex flex-col min-h-0 w-full pb-4 md:pb-5" },
+        { className: "structura-hero-main-section flex-1 flex flex-col min-h-0 w-full max-md:pb-5 md:pb-5" },
         h("div", {
           className:
             "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 flex-1 min-h-0 w-full items-stretch",
@@ -1392,7 +1399,7 @@ const h = React.createElement;
     );
   }
 
-  function ValueBlock({ label, valueText, unitText, big, children }) {
+  function ValueBlock({ label, valueText, unitText, big, integerValue, children }) {
     return h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)]" }, [
       h("div", { className: "p-6" }, [
         h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-4" }, label),
@@ -1402,6 +1409,7 @@ const h = React.createElement;
           [
             h(AnimatedNumberText, {
               valueText: valueText || "—",
+              integer: integerValue,
               className: classNames(
                 "font-black tracking-tight text-[var(--st-fg)] leading-none tabular-nums",
                 big ? "text-7xl md:text-8xl" : "text-4xl"
@@ -1430,6 +1438,20 @@ const h = React.createElement;
 
   function App() {
     const { t, mergeToolMeta, lang } = useI18n();
+
+    /** Interpolate `{key}` placeholders in translated strings */
+    const ti = useCallback(
+      (path, vars) => {
+        let s = t(path);
+        if (vars && typeof vars === "object") {
+          for (const [k, v] of Object.entries(vars)) {
+            s = s.split(`{${k}}`).join(String(v));
+          }
+        }
+        return s;
+      },
+      [t]
+    );
 
     const localizeStatus = useCallback(
       (text) => {
@@ -1911,13 +1933,13 @@ const h = React.createElement;
 
       if (!Number.isFinite(slopePct) || !Number.isFinite(lengthM) || lengthM <= 0) return null;
 
-      let status = "Acceptable";
+      let status = t("ramp.status.acceptable");
       let statusTone = "mid"; // low | mid | high (monochrome emphasis)
       if (slopePct <= 5) {
-        status = "Very comfortable";
+        status = t("ramp.status.veryComfortable");
         statusTone = "low";
       } else if (slopePct > 8) {
-        status = "Too steep";
+        status = t("ramp.status.tooSteep");
         statusTone = "high";
       }
 
@@ -1928,14 +1950,14 @@ const h = React.createElement;
         status,
         statusTone,
       };
-    }, [rampTotalHeightM, rampDesiredSlopePct, rampLengthM, rampInputMode]);
+    }, [rampTotalHeightM, rampDesiredSlopePct, rampLengthM, rampInputMode, t]);
 
-    function steelProfileSuggestion(span) {
-      if (span < 4) return "IPE 200 (indicative)";
-      if (span < 6) return "IPE 270 (indicative)";
-      if (span < 9) return "IPE 360 (indicative)";
-      if (span < 12) return "IPE 450 (indicative)";
-      return "Heavy rolled / plated section — consult structural engineer";
+    function steelProfileSuggestionTranslated(span, tFn) {
+      if (span < 4) return tFn("span.steel.i200");
+      if (span < 6) return tFn("span.steel.i270");
+      if (span < 9) return tFn("span.steel.i360");
+      if (span < 12) return tFn("span.steel.i450");
+      return tFn("span.steel.heavy");
     }
 
     const spanResult = useMemo(() => {
@@ -1964,62 +1986,52 @@ const h = React.createElement;
       let memberSuggestion = "";
       if (spanSystem === "rc_flat" || spanSystem === "rc_beam") {
         const side = Math.round(Math.max(30, Math.min(90, 32 + span * 4.5)) * 10) / 10;
-        memberSuggestion = `${formatSmartNumber(side)} × ${formatSmartNumber(side)} cm (RC column, indicative)`;
+        memberSuggestion = ti("span.memberRc", { side: formatSmartNumber(side) });
       } else if (spanSystem === "steel") {
-        memberSuggestion = steelProfileSuggestion(span);
+        memberSuggestion = steelProfileSuggestionTranslated(span, t);
       } else {
         const w = Math.round(Math.max(20, Math.min(60, span * 8)) * 10) / 10;
-        memberSuggestion = `Timber beam width often ≥ ${formatSmartNumber(w)} cm — verify species/grade`;
+        memberSuggestion = ti("span.memberTimber", { w: formatSmartNumber(w) });
       }
 
       let spanWarnLevel = "green";
-      let spanWarnText = null;
+      let spanWarnKey = null;
       if (spanSystem === "rc_flat") {
         if (span > 12) {
           spanWarnLevel = "red";
-          spanWarnText = "Span exceeds typical RC flat slab range (>12 m).";
+          spanWarnKey = "rcFlatRed";
         } else if (span > 10) {
           spanWarnLevel = "yellow";
-          spanWarnText = "Approaching typical RC flat slab limit (12 m).";
+          spanWarnKey = "rcFlatYellow";
         }
       } else if (spanSystem === "rc_beam") {
         if (span > 18) {
           spanWarnLevel = "red";
-          spanWarnText = "Span exceeds typical RC beam & slab range (>18 m).";
+          spanWarnKey = "rcBeamRed";
         } else if (span > 15) {
           spanWarnLevel = "yellow";
-          spanWarnText = "Approaching typical RC beam limit (18 m).";
+          spanWarnKey = "rcBeamYellow";
         }
       }
 
-      let designLabel = "Efficient";
       let designStatus = "efficient";
       if (spanWarnLevel === "red") {
         designStatus = "review";
-        designLabel = "Review Needed";
       } else if (spanWarnLevel === "yellow") {
         designStatus = "acceptable";
-        designLabel = "Acceptable";
       } else if (
         (spanSystem === "rc_flat" || spanSystem === "rc_beam") &&
         spanLoad === "heavy" &&
         span > 8
       ) {
         designStatus = "acceptable";
-        designLabel = "Acceptable";
       }
 
-      const systemLabel =
-        spanSystem === "rc_flat"
-          ? "Reinforced Concrete Flat Slab"
-          : spanSystem === "rc_beam"
-            ? "Reinforced Concrete Beam & Slab"
-            : spanSystem === "steel"
-              ? "Steel Beam"
-              : "Timber Beam";
+      const designLabel = t(`span.design.${designStatus}`);
+      const spanWarnText = spanWarnKey ? t(`span.warn.${spanWarnKey}`) : null;
 
-      const loadLabel =
-        spanLoad === "light" ? "Light (residential)" : spanLoad === "medium" ? "Medium (office/commercial)" : "Heavy (industrial)";
+      const systemLabel = t(`options.spanSystem.${spanSystem}`);
+      const loadLabel = t(`options.spanLoad.${spanLoad}`);
 
       return {
         spanM: span,
@@ -2035,7 +2047,7 @@ const h = React.createElement;
         systemLabel,
         loadLabel,
       };
-    }, [spanLengthM, spanSystem, spanLoad]);
+    }, [spanLengthM, spanSystem, spanLoad, t, ti]);
 
     const parkingResult = useMemo(() => {
       const totalArea = Number(parkingAreaM2);
@@ -2058,13 +2070,10 @@ const h = React.createElement;
       const efficiencyPct = Math.round(efficiencyRaw * 1000) / 10;
 
       let effLevel = "efficient";
-      let effLabel = "Efficient layout";
       if (efficiencyPct < 50) {
         effLevel = "poor";
-        effLabel = "Poor layout";
       } else if (efficiencyPct < 65) {
         effLevel = "acceptable";
-        effLabel = "Acceptable layout";
       }
 
       const rampRequired = totalArea > 500;
@@ -2078,10 +2087,9 @@ const h = React.createElement;
         grossPerStall,
         efficiencyPct,
         effLevel,
-        effLabel,
         rampRequired,
-        layoutLabel: layout.label,
-        usageLabel: usage.label,
+        layoutKey: parkingLayout,
+        usageKey: parkingUsage,
         stallArea,
       };
     }, [parkingAreaM2, parkingLayout, parkingUsage]);
@@ -2114,18 +2122,20 @@ const h = React.createElement;
       const enDfMin = room.enDfMin;
       const enOk = dfPct + 1e-9 >= enDfMin;
       const lowBand = enDfMin * 0.8;
+      const roomName = t(`options.daylightRoom.${room.id}`);
+      const facadeName = t(`options.facade.${daylightFacade}`);
 
       let complianceLevel = "green";
-      let complianceLabel = "Meets EN 17037 (indicative)";
+      let complianceLabel = t("daylight.compliance.green");
       if (dfPct + 1e-9 >= enDfMin) {
         complianceLevel = "green";
-        complianceLabel = "Meets EN 17037 (indicative)";
+        complianceLabel = t("daylight.compliance.green");
       } else if (dfPct + 1e-9 >= lowBand) {
         complianceLevel = "yellow";
-        complianceLabel = "Below EN 17037 minimum — within 20% of threshold (indicative)";
+        complianceLabel = t("daylight.compliance.yellow");
       } else {
         complianceLevel = "red";
-        complianceLabel = "Does not meet EN 17037 (indicative)";
+        complianceLabel = t("daylight.compliance.red");
       }
 
       const recommendations = [];
@@ -2135,34 +2145,48 @@ const h = React.createElement;
           const needWinE = (targetWfr / 100) * floor - win;
           if (needWinE > 0.05) {
             recommendations.push(
-              `Increase window area by about ${formatSmartNumber(needWinE)} m² toward EN 17037 ${formatSmartNumber(enDfMin)}% DF for ${room.label} (IES-compatible metrics as secondary check).`
+              ti("daylight.recIncreaseWin", {
+                need: formatSmartNumber(needWinE),
+                enDf: formatInteger(enDfMin),
+                room: roomName,
+              })
             );
           } else {
             recommendations.push(
-              `Consider rooflights, clerestory glazing, or reducing room depth — indicative DF ${formatSmartNumber(dfPct)}% vs EN 17037 ${formatSmartNumber(enDfMin)}% for ${room.label}.`
+              ti("daylight.recRooflights", {
+                df: formatSmartNumber(dfPct),
+                enDf: formatInteger(enDfMin),
+                room: roomName,
+              })
             );
           }
         } else {
           recommendations.push(
-            `Increase window area substantially — indicative DF is below EN 17037 ${formatSmartNumber(enDfMin)}% for ${room.label}.`
+            ti("daylight.recSubstantial", {
+              enDf: formatInteger(enDfMin),
+              room: roomName,
+            })
           );
         }
       }
       if (complianceLevel !== "green" && depth > penetrationM * 1.12) {
         recommendations.push(
-          `Consider rooflights or light shelves — penetration (${formatSmartNumber(penetrationM)} m) is limited vs depth (${formatSmartNumber(depth)} m); verify with IES LM-83 / spatial daylight metrics where applicable.`
+          ti("daylight.recPenetration", {
+            pen: formatSmartNumber(penetrationM),
+            depth: formatSmartNumber(depth),
+          })
         );
       }
       if (recommendations.length === 0 && complianceLevel === "green") {
-        recommendations.push("No changes indicated for EN 17037 indicative targets; confirm with project-specific simulation.");
+        recommendations.push(t("daylight.recOkGreen"));
       }
 
       return {
         floorM2: floor,
         windowM2: win,
         depthM: depth,
-        roomLabel: room.label,
-        facadeLabel: facade.label,
+        roomLabel: roomName,
+        facadeLabel: facadeName,
         wfrPct,
         dfPct,
         penetrationM,
@@ -2172,7 +2196,7 @@ const h = React.createElement;
         complianceLabel,
         recommendations,
       };
-    }, [daylightRoomType, daylightFloorM2, daylightWindowM2, daylightDepthM, daylightFacade]);
+    }, [daylightRoomType, daylightFloorM2, daylightWindowM2, daylightDepthM, daylightFacade, t, ti]);
 
     const fireEscapeResult = useMemo(() => {
       const floor = Number(fireFloorM2);
@@ -2185,6 +2209,7 @@ const h = React.createElement;
       if (!Number.isFinite(floors) || floors < 1 || !Number.isInteger(floors)) return null;
 
       const bt = FIRE_BUILDING_TYPES.find((b) => b.id === fireBuildingType) || FIRE_BUILDING_TYPES[1];
+      const buildingName = t(`options.fireBuilding.${bt.id}`);
       const maxTravelRaw = fireSprinkler ? bt.maxSprinkler : bt.maxNoSprinkler;
       const maxTravelM = Math.round(maxTravelRaw * 10) / 10;
 
@@ -2203,33 +2228,42 @@ const h = React.createElement;
       const failures = [];
       if (!travelOk) {
         failures.push(
-          `Travel distance exceeds IBC maximum (${formatSmartNumber(travel)} m > ${formatSmartNumber(maxTravelM)} m for ${bt.label}, ${fireSprinkler ? "sprinklered" : "non-sprinklered"}).`
+          ti("fire.failureTravel", {
+            travel: formatSmartNumber(travel),
+            maxTravel: formatSmartNumber(maxTravelM),
+            building: buildingName,
+            sprinkler: fireSprinkler ? t("fire.sprinklered") : t("fire.nonSprinklered"),
+          })
         );
       }
       if (!exitsOk) {
         failures.push(
-          `Insufficient exits (${exitsN} provided; minimum ${requiredMinExits} for ${formatSmartNumber(floor)} m² floor).`
+          ti("fire.failureExits", {
+            exits: formatInteger(exitsN),
+            min: formatInteger(requiredMinExits),
+            floor: formatSmartNumber(floor),
+          })
         );
       }
 
       let complianceLevel = "full";
-      let complianceLabel = "Fully compliant (indicative)";
+      let complianceLabel = t("fire.compliance.full");
       if (failures.length > 0) {
         complianceLevel = "fail";
-        complianceLabel = "Non-compliant";
+        complianceLabel = t("fire.compliance.fail");
       } else if (marginalTravel || marginalExits) {
         complianceLevel = "marginal";
         if (marginalTravel && marginalExits) {
-          complianceLabel = "Compliant — near travel limit and at minimum exit count";
+          complianceLabel = t("fire.compliance.marginalBoth");
         } else if (marginalTravel) {
-          complianceLabel = "Compliant — within 10% of max travel distance";
+          complianceLabel = t("fire.compliance.marginalTravel");
         } else {
-          complianceLabel = "Compliant — at minimum required exit count";
+          complianceLabel = t("fire.compliance.marginalExits");
         }
       }
 
       return {
-        buildingLabel: bt.label,
+        buildingLabel: buildingName,
         floorM2: floor,
         travelM: travel,
         numExits: exitsN,
@@ -2246,7 +2280,7 @@ const h = React.createElement;
         failures,
         travelRatio,
       };
-    }, [fireBuildingType, fireFloorM2, fireNumExits, fireTravelM, fireFloors, fireSprinkler]);
+    }, [fireBuildingType, fireFloorM2, fireNumExits, fireTravelM, fireFloors, fireSprinkler, t, ti]);
 
     const uValueResult = useMemo(() => {
       const getMat = (id) => U_VALUE_MATERIALS.find((m) => m.id === id) || U_VALUE_MATERIALS[0];
@@ -2255,24 +2289,24 @@ const h = React.createElement;
       const layerRows = [];
       for (let i = 0; i < uLayers.length; i++) {
         const layer = uLayers[i];
-        const t = Number(layer.thicknessMm);
-        if (!Number.isFinite(t) || t <= 0) return null;
+        const thickMm = Number(layer.thicknessMm);
+        if (!Number.isFinite(thickMm) || thickMm <= 0) return null;
         const mat = getMat(layer.materialId);
         let rLayer;
         if (mat.fixedR != null) {
           rLayer = mat.fixedR;
         } else if (mat.lambda != null && mat.lambda > 0) {
-          rLayer = (t / 1000) / mat.lambda;
+          rLayer = (thickMm / 1000) / mat.lambda;
         } else {
           return null;
         }
-        totalThicknessMm += t;
+        totalThicknessMm += thickMm;
         RsumLayers += rLayer;
         layerRows.push({
           uid: layer.uid,
           materialId: layer.materialId,
-          materialLabel: mat.label,
-          thicknessMm: t,
+          materialLabel: t(`options.uMaterial.${mat.id}`),
+          thicknessMm: thickMm,
           rLayer,
         });
       }
@@ -2284,20 +2318,22 @@ const h = React.createElement;
 
       const climate = U_VALUE_CLIMATES.find((c) => c.id === uClimateZone) || U_VALUE_CLIMATES[2];
       const constr = U_VALUE_CONSTRUCTION_TYPES.find((c) => c.id === uConstructionType) || U_VALUE_CONSTRUCTION_TYPES[0];
+      const climateLabelLoc = t(`options.uClimate.${climate.id}`);
+      const constructionLabelLoc = t(`options.uConstruction.${constr.id}`);
       const thresholds = U_VALUE_THRESHOLDS[uConstructionType] || U_VALUE_THRESHOLDS.external_wall;
       const uMax = thresholds[uClimateZone] ?? thresholds.C;
 
       let complianceLevel = "green";
-      let complianceLabel = "Meets ASHRAE 90.1 / EU EPBD threshold (indicative)";
+      let complianceLabel = t("uValue.compliance.green");
       if (uRounded <= uMax + 1e-9) {
         complianceLevel = "green";
-        complianceLabel = "Meets indicative threshold (U ≤ max)";
+        complianceLabel = t("uValue.compliance.green");
       } else if (uRounded <= uMax * 1.15 + 1e-9) {
         complianceLevel = "yellow";
-        complianceLabel = "Above threshold — within 15% of limit (indicative)";
+        complianceLabel = t("uValue.compliance.yellow");
       } else {
         complianceLevel = "red";
-        complianceLabel = "Exceeds threshold (indicative)";
+        complianceLabel = t("uValue.compliance.red");
       }
 
       const improvementWm2K = uRounded > uMax ? Math.round((uRounded - uMax) * 100) / 100 : 0;
@@ -2307,15 +2343,15 @@ const h = React.createElement;
         U: uRounded,
         Rtotal: RtotalRounded,
         uMax,
-        climateLabel: climate.label,
-        constructionLabel: constr.label,
+        climateLabel: climateLabelLoc,
+        constructionLabel: constructionLabelLoc,
         complianceLevel,
         complianceLabel,
         improvementWm2K,
         layerRows,
         uLayersSnapshot: uLayers.map((l) => ({ ...l })),
       };
-    }, [uClimateZone, uConstructionType, uLayers]);
+    }, [uClimateZone, uConstructionType, uLayers, t]);
 
     function addULayer() {
       setULayers((prev) => {
@@ -2366,13 +2402,16 @@ const h = React.createElement;
       const floorsOver = exceedsFar && maxFootprintM2 > 0 ? Math.round(((gfaDemandM2 - maxTotalGfaM2) / maxFootprintM2) * 10) / 10 : 0;
 
       let complianceLevel = "green";
-      let complianceLabel = "Inputs consistent and buildable (indicative)";
+      let complianceLabel = t("site.compliance.ok");
       if (exceedsFar) {
         complianceLevel = "red";
-        complianceLabel = `Not compliant — ${formatSmartNumber(overGfaM2)} m² over FAR cap (≈ ${formatSmartNumber(floorsOver)} floor-equiv. at max footprint)`;
+        complianceLabel = ti("site.compliance.exceed", {
+          over: formatSmartNumber(overGfaM2),
+          floorsEq: formatSmartNumber(floorsOver),
+        });
       } else if (gfaDemandM2 > maxTotalGfaM2 * 0.85 + 1e-6) {
         complianceLevel = "yellow";
-        complianceLabel = `Near FAR limit — only ${formatSmartNumber(headroomM2)} m² GFA headroom before exceed`;
+        complianceLabel = ti("site.compliance.near", { headroom: formatSmartNumber(headroomM2) });
       }
 
       const basementAreaM2 = siteBasement ? maxFootprintM2 : null;
@@ -2399,7 +2438,7 @@ const h = React.createElement;
         basementAreaM2,
         footprintPct: Math.round(scr * 1000) / 10,
       };
-    }, [sitePlotM2, siteScrStr, siteFarStr, siteFloorsStr, siteBasement]);
+    }, [sitePlotM2, siteScrStr, siteFarStr, siteFloorsStr, siteBasement, t, ti]);
 
     const computed = useMemo(() => {
       if (tab === "convert") {
@@ -2614,24 +2653,56 @@ const h = React.createElement;
 
     function formatSpanCopyText() {
       if (!spanResult) {
-        return ["Column & Beam Span Calculator", "", "Enter a valid span length (m)."].join("\n");
+        return [t("export.span.title"), "", t("common.statusValidSpanLength")].join("\n");
       }
       const r = spanResult;
       const parts = [
-        "Column & Beam Span Calculator",
+        t("export.span.title"),
         "",
-        `Structural system: ${r.systemLabel}`,
-        `Load: ${r.loadLabel}`,
-        `Span: ${formatSmartNumber(r.spanM)} m`,
+        ti("export.span.systemLine", { v: r.systemLabel }),
+        ti("export.span.loadLine", { v: r.loadLabel }),
+        ti("export.span.spanLine", { v: formatSmartNumber(r.spanM) }),
         "",
-        "Results:",
-        `- Estimated slab/beam depth: ${formatSmartNumber(r.depthCm)} cm`,
-        `- Span-to-depth ratio (used): L/d ≈ ${formatSmartNumber(r.ldRatio)}`,
-        `- Column / profile: ${r.memberSuggestion}`,
-        `- Design status: ${r.designLabel}`,
+        t("export.resultsHeader"),
+        ti("export.span.depthLine", { v: formatSmartNumber(r.depthCm) }),
+        ti("export.span.ldLine", { v: formatSmartNumber(r.ldRatio) }),
+        ti("export.span.memberLine", { v: r.memberSuggestion }),
+        ti("export.span.designLine", { v: r.designLabel }),
       ];
-      if (r.spanWarnText) parts.push(`- Validation: ${r.spanWarnText}`);
+      if (r.spanWarnText) parts.push(ti("export.span.validationLine", { v: r.spanWarnText }));
       return parts.join("\n");
+    }
+
+    function formatStairCopyText() {
+      if (!stairResult) {
+        return [t("tools.stair.label"), "", t("common.noValidInputs")].join("\n");
+      }
+      const r = stairResult;
+      return [
+        t("tools.stair.label"),
+        "",
+        t("export.resultsHeader"),
+        ti("export.stair.stepsLine", { v: formatInteger(r.steps) }),
+        ti("export.stair.riserLine", { v: formatSmartNumber(r.actualRiserCm) }),
+        ti("export.stair.runLine", { v: formatSmartNumber(r.totalRunM) }),
+        ti("export.stair.treadLine", { v: formatSmartNumber(r.suggestedTreadCm) }),
+      ].join("\n");
+    }
+
+    function formatRampCopyText() {
+      if (!rampResult) {
+        return [t("tools.ramp.label"), "", t("common.awaitingRampInput")].join("\n");
+      }
+      const r = rampResult;
+      return [
+        t("tools.ramp.label"),
+        "",
+        t("export.resultsHeader"),
+        ti("export.ramp.statusLine", { v: r.status }),
+        ti("export.ramp.slopeLine", { v: formatSmartNumber(r.slopePct) }),
+        ti("export.ramp.lengthLine", { v: formatSmartNumber(r.lengthM) }),
+        ti("export.ramp.heightLine", { v: formatSmartNumber(r.heightM) }),
+      ].join("\n");
     }
 
     async function onCopy() {
@@ -2820,6 +2891,52 @@ const h = React.createElement;
         }
         return;
       }
+      if (activeTool === "stair") {
+        const text = formatStairCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
+      if (activeTool === "ramp") {
+        const text = formatRampCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (!anyValuePresent) {
         setStatus({ state: "warn", text: "Nothing to copy yet." });
         return;
@@ -2957,6 +3074,7 @@ const h = React.createElement;
         ...prev,
         {
           uid: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          typeId: roomType.id,
           name: roomType.name,
           minAreaM2: roomType.minAreaM2,
           minDimM: roomType.minDimM,
@@ -2973,7 +3091,7 @@ const h = React.createElement;
     function exportRoomProgramCSV() {
       const header = ["room", "min_area_m2", "user_area_m2", "min_dimension_m"];
       const rows = roomProgramRows.map((r) => [
-        r.name,
+        r.typeId ? t(`options.roomProgram.${r.typeId}`) : r.name,
         formatSmartNumber(r.minAreaM2),
         formatSmartNumber(r.userAreaM2),
         formatSmartNumber(r.minDimM),
@@ -2986,23 +3104,23 @@ const h = React.createElement;
 
     function formatParkingCopyText() {
       if (!parkingResult) {
-        return ["Parking Calculator", "", "Enter a valid total parking area (m²)."].join("\n");
+        return [t("export.parking.title"), "", t("common.statusValidParkingArea")].join("\n");
       }
       const r = parkingResult;
       return [
-        "Parking Calculator",
+        t("export.parking.title"),
         "",
-        `Total parking area: ${formatSmartNumber(r.totalAreaM2)} m²`,
-        `Layout: ${r.layoutLabel}`,
-        `Usage: ${r.usageLabel}`,
+        ti("export.parking.totalAreaLine", { v: formatSmartNumber(r.totalAreaM2) }),
+        ti("export.parking.layoutLine", { v: t(`options.parkingLayout.${r.layoutKey}`) }),
+        ti("export.parking.usageLine", { v: t(`options.parkingUsage.${r.usageKey}`) }),
         "",
-        "Results:",
-        `- Parking spaces: ${r.spaces}`,
-        `- Required aisle width: ${formatSmartNumber(r.aisleM)} m`,
-        `- Single space: ${formatSmartNumber(r.spaceDimW)} × ${formatSmartNumber(r.spaceDimD)} m`,
-        `- Ramp required: ${r.rampRequired ? "Yes" : "No"}`,
-        `- Efficiency: ${formatSmartNumber(r.efficiencyPct)} %`,
-        `- Assessment: ${r.effLabel}`,
+        t("export.resultsHeader"),
+        ti("export.parking.spacesLine", { v: formatInteger(r.spaces) }),
+        ti("export.parking.aisleLine", { v: formatSmartNumber(r.aisleM) }),
+        ti("export.parking.spaceDimLine", { w: formatSmartNumber(r.spaceDimW), d: formatSmartNumber(r.spaceDimD) }),
+        ti("export.parking.rampLine", { v: r.rampRequired ? t("common.yes") : t("common.no") }),
+        ti("export.parking.efficiencyLine", { v: formatSmartNumber(r.efficiencyPct) }),
+        ti("export.parking.assessmentLine", { v: t(`badges.parkingEfficiency.${r.effLevel}`) }),
       ].join("\n");
     }
 
@@ -3030,7 +3148,7 @@ const h = React.createElement;
         "- Secondary reference: IES daylight metrics (e.g. LM-83 spatial daylight)",
         "",
         "Compliance:",
-        `- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`,
+        `- EN 17037 (min DF ${formatInteger(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`,
         `- Status: ${r.complianceLabel}`,
         "",
         "Recommendations:",
@@ -3049,14 +3167,14 @@ const h = React.createElement;
         "",
         `Building use: ${r.buildingLabel}`,
         `Floor area: ${formatSmartNumber(r.floorM2)} m²`,
-        `Number of exits: ${r.numExits}`,
+        `Number of exits: ${formatInteger(r.numExits)}`,
         `Travel distance to nearest exit: ${formatSmartNumber(r.travelM)} m`,
-        `Number of floors: ${r.floors}`,
+        `Number of floors: ${formatInteger(r.floors)}`,
         `Sprinkler system: ${r.sprinkler ? "Yes" : "No"}`,
         "",
         "Results (IBC 2021 — indicative):",
         `- Maximum allowed travel distance: ${formatSmartNumber(r.maxTravelM)} m`,
-        `- Required minimum number of exits: ${r.requiredMinExits}`,
+        `- Required minimum number of exits: ${formatInteger(r.requiredMinExits)}`,
         `- Exit width requirement (total): ${formatSmartNumber(r.exitWidthTotalMin)} m (${formatSmartNumber(FIRE_EXIT_WIDTH_M)} m per required exit)`,
         `- Minimum aggregate width for ${r.numExits} exit(s): ${formatSmartNumber(r.providedExitWidthMin)} m`,
         `- Compliance: ${r.complianceLabel}`,
@@ -3123,7 +3241,7 @@ const h = React.createElement;
       lines.push(`- Total plot area: ${formatSmartNumber(r.plotM2)} m²`);
       lines.push(`- Site coverage ratio (SCR): ${formatSmartNumber(r.scr)}`);
       lines.push(`- Floor area ratio (FAR): ${formatSmartNumber(r.far)}`);
-      lines.push(`- Number of floors: ${r.floors}`);
+      lines.push(`- Number of floors: ${formatInteger(r.floors)}`);
       lines.push(`- Basement included: ${r.basementIncluded ? "Yes" : "No"}`);
       lines.push("");
       lines.push("Auto-calculated (indicative)");
@@ -3200,14 +3318,14 @@ const h = React.createElement;
         lines.push("Inputs");
         lines.push(`- Building use: ${r.buildingLabel}`);
         lines.push(`- Floor area: ${formatSmartNumber(r.floorM2)} m²`);
-        lines.push(`- Number of exits: ${r.numExits}`);
+        lines.push(`- Number of exits: ${formatInteger(r.numExits)}`);
         lines.push(`- Travel distance to nearest exit: ${formatSmartNumber(r.travelM)} m`);
-        lines.push(`- Number of floors: ${r.floors}`);
+        lines.push(`- Number of floors: ${formatInteger(r.floors)}`);
         lines.push(`- Sprinkler system: ${r.sprinkler ? "Yes" : "No"}`);
         lines.push("");
         lines.push("Results");
         lines.push(`- Maximum allowed travel distance: ${formatSmartNumber(r.maxTravelM)} m`);
-        lines.push(`- Required minimum number of exits: ${r.requiredMinExits}`);
+        lines.push(`- Required minimum number of exits: ${formatInteger(r.requiredMinExits)}`);
         lines.push(`- Exit width requirement (total for required exits): ${formatSmartNumber(r.exitWidthTotalMin)} m`);
         lines.push(`- Minimum aggregate width (${r.numExits} exit(s)): ${formatSmartNumber(r.providedExitWidthMin)} m`);
         lines.push(`- Compliance status: ${r.complianceLabel}`);
@@ -3249,7 +3367,7 @@ const h = React.createElement;
         lines.push("- Secondary reference: IES daylight metrics (e.g. LM-83)");
         lines.push("");
         lines.push("Compliance");
-        lines.push(`- EN 17037 (min DF ${formatSmartNumber(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`);
+        lines.push(`- EN 17037 (min DF ${formatInteger(r.enDfMin)}% for ${r.roomLabel}): ${r.enOk ? "Pass" : "Fail"}`);
         lines.push(`- Status: ${r.complianceLabel}`);
         lines.push("");
         lines.push("Recommendations");
@@ -3272,18 +3390,18 @@ const h = React.createElement;
           return lines;
         }
         const r = parkingResult;
-        lines.push("Inputs");
-        lines.push(`- Total parking area: ${formatSmartNumber(r.totalAreaM2)} m²`);
-        lines.push(`- Layout: ${r.layoutLabel}`);
-        lines.push(`- Usage: ${r.usageLabel}`);
+        lines.push(t("common.inputs"));
+        lines.push(`- ${t("common.totalParkingArea")}: ${formatSmartNumber(r.totalAreaM2)} m²`);
+        lines.push(`- ${t("common.parkingType")}: ${t(`options.parkingLayout.${r.layoutKey}`)}`);
+        lines.push(`- ${t("common.usageType")}: ${t(`options.parkingUsage.${r.usageKey}`)}`);
         lines.push("");
-        lines.push("Results");
-        lines.push(`- Parking spaces: ${r.spaces}`);
-        lines.push(`- Required aisle width: ${formatSmartNumber(r.aisleM)} m`);
-        lines.push(`- Single space: ${formatSmartNumber(r.spaceDimW)} × ${formatSmartNumber(r.spaceDimD)} m`);
-        lines.push(`- Ramp required: ${r.rampRequired ? "Yes" : "No"}`);
-        lines.push(`- Efficiency: ${formatSmartNumber(r.efficiencyPct)} %`);
-        lines.push(`- Assessment: ${r.effLabel}`);
+        lines.push(t("common.results"));
+        lines.push(`- ${t("common.parkingSpaces")}: ${formatInteger(r.spaces)}`);
+        lines.push(`- ${t("common.requiredAisleWidth")}: ${formatSmartNumber(r.aisleM)} m`);
+        lines.push(`- ${t("common.singleSpaceWxD")}: ${formatSmartNumber(r.spaceDimW)} × ${formatSmartNumber(r.spaceDimD)} m`);
+        lines.push(`- ${t("common.rampRequired")}: ${r.rampRequired ? t("common.yes") : t("common.no")}`);
+        lines.push(`- ${t("common.efficiency")}: ${formatSmartNumber(r.efficiencyPct)} %`);
+        lines.push(`- ${t("export.parking.assessmentShort")}: ${t(`badges.parkingEfficiency.${r.effLevel}`)}`);
         return lines;
       }
       if (activeTool === "room") {
@@ -3350,7 +3468,7 @@ const h = React.createElement;
         lines.push(`- Total plot area: ${formatSmartNumber(r.plotM2)} m²`);
         lines.push(`- SCR: ${formatSmartNumber(r.scr)}`);
         lines.push(`- FAR: ${formatSmartNumber(r.far)}`);
-        lines.push(`- Floors: ${r.floors}`);
+        lines.push(`- Floors: ${formatInteger(r.floors)}`);
         lines.push(`- Basement: ${r.basementIncluded ? "Yes" : "No"}`);
         lines.push("");
         lines.push("Results");
@@ -3719,12 +3837,15 @@ const h = React.createElement;
     }
 
     // Quick reference chips (values in meters)
-    const quickChips = [
-      { label: "Door 0.9m", apply: () => (tab === "convert" ? setRealLen(metersToLengthDisplay(0.9, unit)) : setModelLen(metersToLengthDisplay(0.9, unit))) },
-      { label: "Floor height 3.0m", apply: () => (tab === "convert" ? setRealH(metersToLengthDisplay(3.0, unit)) : setModelH(metersToLengthDisplay(3.0, unit))) },
-      { label: "Room width 4.5m", apply: () => (tab === "convert" ? setRealW(metersToLengthDisplay(4.5, unit)) : setModelW(metersToLengthDisplay(4.5, unit))) },
-      { label: "Room depth 6.0m", apply: () => (tab === "convert" ? setRealD(metersToLengthDisplay(6.0, unit)) : setModelD(metersToLengthDisplay(6.0, unit))) },
-    ];
+    const quickChips = useMemo(
+      () => [
+        { label: t("common.quickChipDoor09"), apply: () => (tab === "convert" ? setRealLen(metersToLengthDisplay(0.9, unit)) : setModelLen(metersToLengthDisplay(0.9, unit))) },
+        { label: t("common.quickChipFloor30"), apply: () => (tab === "convert" ? setRealH(metersToLengthDisplay(3.0, unit)) : setModelH(metersToLengthDisplay(3.0, unit))) },
+        { label: t("common.quickChipRoomW45"), apply: () => (tab === "convert" ? setRealW(metersToLengthDisplay(4.5, unit)) : setModelW(metersToLengthDisplay(4.5, unit))) },
+        { label: t("common.quickChipRoomD60"), apply: () => (tab === "convert" ? setRealD(metersToLengthDisplay(6.0, unit)) : setModelD(metersToLengthDisplay(6.0, unit))) },
+      ],
+      [t, unit, tab]
+    );
 
     const inputState = {
       convert: { len: realLen, area: realArea, w: realW, h: realH, d: realD, onLen: setRealLen, onArea: setRealArea, onW: setRealW, onH: setRealH, onD: setRealD },
@@ -4147,7 +4268,7 @@ const h = React.createElement;
                     className:
                       "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
                   },
-                  ROOM_PROGRAM_TYPES.map((opt) => h("option", { key: opt.id, value: opt.id }, opt.name))
+                  ROOM_PROGRAM_TYPES.map((opt) => h("option", { key: opt.id, value: opt.id }, t(`options.roomProgram.${opt.id}`)))
                 ),
               }),
               h(
@@ -4217,7 +4338,11 @@ const h = React.createElement;
                           {},
                           roomProgramRows.map((row) =>
                             h("tr", { key: row.uid, className: "border-b border-[var(--st-border)] last:border-0 bg-[var(--st-bg)]/50" }, [
-                              h("td", { className: "px-4 py-3 font-bold text-[var(--st-fg)]" }, row.name),
+                              h(
+                                "td",
+                                { className: "px-4 py-3 font-bold text-[var(--st-fg)]" },
+                                row.typeId ? t(`options.roomProgram.${row.typeId}`) : row.name
+                              ),
                               h("td", { className: "px-4 py-3 font-semibold text-[var(--st-fg)]" }, `${formatSmartNumber(row.minAreaM2)} m²`),
                               h("td", { className: "px-4 py-3 font-semibold text-[var(--st-fg)]" }, `${formatSmartNumber(row.userAreaM2)} m²`),
                               h("td", { className: "px-4 py-3" }, [
@@ -4381,16 +4506,16 @@ const h = React.createElement;
               }),
               h(SectionTitle, { label: t("common.parkingType"), hint: t("common.parkingTypeHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: parkingLayout === "parallel", onClick: () => setParkingLayout("parallel") }, "Parallel"),
-                h(ValueButton, { active: parkingLayout === "perpendicular", onClick: () => setParkingLayout("perpendicular") }, "Perpendicular (90°)"),
-                h(ValueButton, { active: parkingLayout === "angled", onClick: () => setParkingLayout("angled") }, "Angled (45°)"),
+                h(ValueButton, { active: parkingLayout === "parallel", onClick: () => setParkingLayout("parallel") }, t("options.parkingLayout.parallel")),
+                h(ValueButton, { active: parkingLayout === "perpendicular", onClick: () => setParkingLayout("perpendicular") }, t("options.parkingLayout.perpendicular")),
+                h(ValueButton, { active: parkingLayout === "angled", onClick: () => setParkingLayout("angled") }, t("options.parkingLayout.angled")),
               ]),
               h(SectionTitle, { label: t("common.usageType"), hint: t("common.usageTypeHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: parkingUsage === "residential", onClick: () => setParkingUsage("residential") }, "Residential"),
-                h(ValueButton, { active: parkingUsage === "office", onClick: () => setParkingUsage("office") }, "Office / Commercial"),
-                h(ValueButton, { active: parkingUsage === "hospital", onClick: () => setParkingUsage("hospital") }, "Hospital"),
-                h(ValueButton, { active: parkingUsage === "mall", onClick: () => setParkingUsage("mall") }, "Shopping Mall"),
+                h(ValueButton, { active: parkingUsage === "residential", onClick: () => setParkingUsage("residential") }, t("options.parkingUsage.residential")),
+                h(ValueButton, { active: parkingUsage === "office", onClick: () => setParkingUsage("office") }, t("options.parkingUsage.office")),
+                h(ValueButton, { active: parkingUsage === "hospital", onClick: () => setParkingUsage("hospital") }, t("options.parkingUsage.hospital")),
+                h(ValueButton, { active: parkingUsage === "mall", onClick: () => setParkingUsage("mall") }, t("options.parkingUsage.mall")),
               ]),
               h(
                 "div",
@@ -4410,16 +4535,17 @@ const h = React.createElement;
               h(
                 "div",
                 { className: classNames("inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase", effBadgeClass) },
-                pr ? pr.effLabel : "—"
+                pr ? t(`badges.parkingEfficiency.${pr.effLevel}`) : "—"
               ),
               layoutSvg,
               pr
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
                       label: t("common.parkingSpaces"),
-                      valueText: String(pr.spaces),
+                      valueText: formatInteger(pr.spaces),
                       unitText: t("common.spacesUnit"),
                       big: true,
+                      integerValue: true,
                     }),
                     h(ValueBlock, {
                       label: t("common.requiredAisleWidth"),
@@ -4539,7 +4665,7 @@ const h = React.createElement;
                     className: "fill-current text-[9px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `Daylight zone ≈ ${formatSmartNumber(dr.penetrationM)} m deep`
+                  ti("daylight.zoneDepthSvg", { v: formatSmartNumber(dr.penetrationM) })
                 ),
               ]
             )
@@ -4549,7 +4675,7 @@ const h = React.createElement;
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter valid dimensions to preview daylight penetration."
+              t("daylight.enterValidPreview")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -4558,11 +4684,11 @@ const h = React.createElement;
             hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Room",
-                hint: "Category sets EN 17037 minimum daylight factor",
+                label: t("daylight.sectionRoom"),
+                hint: t("daylight.sectionRoomHint"),
               }),
               h(Field, {
-                label: "Room type",
+                label: t("daylight.roomType"),
                 children: h(
                   "select",
                   {
@@ -4571,11 +4697,11 @@ const h = React.createElement;
                     className:
                       "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
-                  DAYLIGHT_ROOM_TYPES.map((d) => h("option", { key: d.id, value: d.id }, d.label))
+                  DAYLIGHT_ROOM_TYPES.map((d) => h("option", { key: d.id, value: d.id }, t(`options.daylightRoom.${d.id}`)))
                 ),
               }),
               h(Field, {
-                label: "Floor area (m²)",
+                label: t("daylight.floorAreaM2"),
                 children: h(InputBase, {
                   value: daylightFloorM2,
                   onChange: setDaylightFloorM2,
@@ -4586,7 +4712,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Total window area (m²)",
+                label: t("daylight.windowAreaM2"),
                 children: h(InputBase, {
                   value: daylightWindowM2,
                   onChange: setDaylightWindowM2,
@@ -4597,7 +4723,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Room depth (m)",
+                label: t("daylight.roomDepthM"),
                 children: h(InputBase, {
                   value: daylightDepthM,
                   onChange: setDaylightDepthM,
@@ -4607,12 +4733,12 @@ const h = React.createElement;
                   min: 0,
                 }),
               }),
-              h(SectionTitle, { label: "Facade orientation", hint: "Affects indicative DF and penetration" }),
+              h(SectionTitle, { label: t("daylight.facadeTitle"), hint: t("daylight.facadeHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: daylightFacade === "north", onClick: () => setDaylightFacade("north") }, "North"),
-                h(ValueButton, { active: daylightFacade === "south", onClick: () => setDaylightFacade("south") }, "South"),
-                h(ValueButton, { active: daylightFacade === "east", onClick: () => setDaylightFacade("east") }, "East"),
-                h(ValueButton, { active: daylightFacade === "west", onClick: () => setDaylightFacade("west") }, "West"),
+                h(ValueButton, { active: daylightFacade === "north", onClick: () => setDaylightFacade("north") }, t("options.facade.north")),
+                h(ValueButton, { active: daylightFacade === "south", onClick: () => setDaylightFacade("south") }, t("options.facade.south")),
+                h(ValueButton, { active: daylightFacade === "east", onClick: () => setDaylightFacade("east") }, t("options.facade.east")),
+                h(ValueButton, { active: daylightFacade === "west", onClick: () => setDaylightFacade("west") }, t("options.facade.west")),
               ]),
               h(
                 "div",
@@ -4620,7 +4746,7 @@ const h = React.createElement;
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                `EN 17037 minimum daylight factor: ${formatSmartNumber(2)}% (bedroom, living room, kitchen, hospital room) / ${formatSmartNumber(3)}% (office, classroom). IES metrics (e.g. LM-83) as secondary reference.`
+                ti("daylight.en17037Note", { two: formatInteger(2), three: formatInteger(3) })
               ),
             ]),
           }),
@@ -4638,50 +4764,51 @@ const h = React.createElement;
               dr
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
-                      label: "Window-to-floor ratio",
+                      label: t("daylight.wfr"),
                       valueText: formatSmartNumber(dr.wfrPct),
                       unitText: "%",
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Daylight factor (estimate)",
+                      label: t("daylight.dfEstimate"),
                       valueText: formatSmartNumber(dr.dfPct),
                       unitText: "%",
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Penetration depth",
+                      label: t("daylight.penetrationDepth"),
                       valueText: formatSmartNumber(dr.penetrationM),
-                      unitText: "m",
+                      unitText: t("common.unitM"),
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "EN 17037 min DF",
-                      valueText: formatSmartNumber(dr.enDfMin),
+                      label: t("daylight.enMinDf"),
+                      valueText: formatInteger(dr.enDfMin),
                       unitText: "%",
                       big: false,
+                      integerValue: true,
                     }),
                   ])
                 : null,
               dr
                 ? h("div", { className: "space-y-2 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3" }, [
-                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, "Compliance (indicative)"),
-                    h("div", { className: "text-xs font-semibold text-[var(--st-muted)] mb-1" }, "Primary: EN 17037 · Secondary: IES daylight metrics"),
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, t("daylight.complianceBlockTitle")),
+                    h("div", { className: "text-xs font-semibold text-[var(--st-muted)] mb-1" }, t("daylight.complianceBlockSubtitle")),
                     h("div", { className: "text-sm font-semibold text-[var(--st-fg)]" }, [
-                      `EN 17037 (min DF ${formatSmartNumber(dr.enDfMin)}% for ${dr.roomLabel}): `,
-                      h("span", { className: dr.enOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.enOk ? "Pass" : "Fail"),
+                      ti("daylight.enLine", { enDf: formatInteger(dr.enDfMin), room: dr.roomLabel }),
+                      h("span", { className: dr.enOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400" }, dr.enOk ? t("common.pass") : t("common.fail")),
                     ]),
                   ])
                 : null,
               dr
                 ? h("div", { className: "space-y-2" }, [
-                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, "Recommendations"),
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-[var(--st-muted)]" }, t("daylight.recommendationsTitle")),
                     h(
                       "ul",
                       { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-[var(--st-muted)]" },
                       dr.recommendations.length
                         ? dr.recommendations.map((s, i) => h("li", { key: i }, s))
-                        : [h("li", { key: "ok" }, "No changes required for indicative EN 17037 targets.")]
+                        : [h("li", { key: "ok" }, t("daylight.recNone"))]
                     ),
                   ])
                 : null,
@@ -4762,8 +4889,8 @@ const h = React.createElement;
                   className: "fill-emerald-300/90 dark:fill-emerald-700/80 stroke-emerald-600 dark:stroke-emerald-500",
                   strokeWidth: 1,
                 }),
-                h("text", { x: 70, y: 162, className: "fill-current text-[7px] font-bold" }, "EXIT"),
-                h("text", { x: 238, y: 162, className: "fill-current text-[7px] font-bold" }, "EXIT"),
+                h("text", { x: 70, y: 162, className: "fill-current text-[7px] font-bold" }, t("fire.svgExit")),
+                h("text", { x: 238, y: 162, className: "fill-current text-[7px] font-bold" }, t("fire.svgExit")),
                 h("circle", { cx: 56, cy: 52, r: 5, className: "fill-red-500/90 stroke-red-700 dark:stroke-red-400", strokeWidth: 1 }),
                 h(
                   "path",
@@ -4785,7 +4912,7 @@ const h = React.createElement;
                     className: "fill-current text-[9px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `Travel ${formatSmartNumber(fr.travelM)} m (max ${formatSmartNumber(fr.maxTravelM)} m)`
+                  ti("fire.travelSvg", { travel: formatSmartNumber(fr.travelM), max: formatSmartNumber(fr.maxTravelM) })
                 ),
               ]
             )
@@ -4795,7 +4922,7 @@ const h = React.createElement;
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter valid inputs to preview travel path and exits."
+              t("fire.enterValidPreview")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -4804,11 +4931,11 @@ const h = React.createElement;
             hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Building",
-                hint: "Occupancy type sets IBC travel distance limits",
+                label: t("fire.sectionBuilding"),
+                hint: t("fire.sectionBuildingHint"),
               }),
               h(Field, {
-                label: "Building use type",
+                label: t("fire.buildingUseType"),
                 children: h(
                   "select",
                   {
@@ -4817,11 +4944,11 @@ const h = React.createElement;
                     className:
                       "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
-                  FIRE_BUILDING_TYPES.map((f) => h("option", { key: f.id, value: f.id }, f.label))
+                  FIRE_BUILDING_TYPES.map((f) => h("option", { key: f.id, value: f.id }, t(`options.fireBuilding.${f.id}`)))
                 ),
               }),
               h(Field, {
-                label: "Floor area (m²)",
+                label: t("fire.floorAreaM2"),
                 children: h(InputBase, {
                   value: fireFloorM2,
                   onChange: setFireFloorM2,
@@ -4832,7 +4959,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Number of exits",
+                label: t("fire.numExits"),
                 children: h(InputBase, {
                   value: fireNumExits,
                   onChange: setFireNumExits,
@@ -4843,7 +4970,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Maximum travel distance to nearest exit (m)",
+                label: t("fire.maxTravelM"),
                 children: h(InputBase, {
                   value: fireTravelM,
                   onChange: setFireTravelM,
@@ -4854,7 +4981,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Number of floors",
+                label: t("fire.numFloors"),
                 children: h(InputBase, {
                   value: fireFloors,
                   onChange: setFireFloors,
@@ -4864,10 +4991,10 @@ const h = React.createElement;
                   min: 1,
                 }),
               }),
-              h(SectionTitle, { label: "Sprinkler system", hint: "Affects maximum travel distance" }),
+              h(SectionTitle, { label: t("fire.sprinklerTitle"), hint: t("fire.sprinklerHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: fireSprinkler === true, onClick: () => setFireSprinkler(true) }, "Yes"),
-                h(ValueButton, { active: fireSprinkler === false, onClick: () => setFireSprinkler(false) }, "No"),
+                h(ValueButton, { active: fireSprinkler === true, onClick: () => setFireSprinkler(true) }, t("common.yes")),
+                h(ValueButton, { active: fireSprinkler === false, onClick: () => setFireSprinkler(false) }, t("common.no")),
               ]),
               h(
                 "div",
@@ -4875,7 +5002,7 @@ const h = React.createElement;
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                `IBC 2021: minimum ${formatSmartNumber(FIRE_EXIT_WIDTH_M)} m per exit; two exits required when floor area exceeds ${FIRE_AREA_TWO_EXIT_M2} m².`
+                ti("fire.ibcNote", { w: formatSmartNumber(FIRE_EXIT_WIDTH_M), area: formatInteger(FIRE_AREA_TWO_EXIT_M2) })
               ),
             ]),
           }),
@@ -4893,40 +5020,41 @@ const h = React.createElement;
               fr
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
-                      label: "Maximum allowed travel distance",
+                      label: t("fire.maxAllowedTravel"),
                       valueText: formatSmartNumber(fr.maxTravelM),
-                      unitText: "m",
+                      unitText: t("common.unitM"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Required minimum exits",
-                      valueText: String(fr.requiredMinExits),
-                      unitText: "exits",
+                      label: t("fire.requiredMinExits"),
+                      valueText: formatInteger(fr.requiredMinExits),
+                      unitText: t("common.exitsUnit"),
                       big: true,
+                      integerValue: true,
                     }),
                     h(ValueBlock, {
-                      label: "Exit width requirement (total)",
+                      label: t("fire.exitWidthTotal"),
                       valueText: formatSmartNumber(fr.exitWidthTotalMin),
-                      unitText: "m",
+                      unitText: t("common.unitM"),
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "Your travel distance",
+                      label: t("fire.yourTravelDistance"),
                       valueText: formatSmartNumber(fr.travelM),
-                      unitText: "m",
+                      unitText: t("common.unitM"),
                       big: false,
                     }),
                   ])
                 : null,
               fr
                 ? h("div", { className: "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 py-3 text-sm font-semibold text-[var(--st-fg)]" }, [
-                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, "Reference"),
-                    "IBC 2021 — verify with AHJ and full code path.",
+                    h("span", { className: "text-[var(--st-muted)] font-bold uppercase text-[10px] tracking-[.2em] mr-2" }, t("common.reference")),
+                    t("fire.referenceIbc"),
                   ])
                 : null,
               fr && fr.failures.length
                 ? h("div", { className: "space-y-2 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 px-4 py-3" }, [
-                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-red-700 dark:text-red-300" }, "What fails"),
+                    h("div", { className: "text-[10px] font-bold tracking-[.2em] uppercase text-red-700 dark:text-red-300" }, t("fire.whatFails")),
                     h(
                       "ul",
                       { className: "list-disc space-y-1.5 pl-5 text-sm font-semibold text-red-900 dark:text-red-200" },
@@ -5037,7 +5165,7 @@ const h = React.createElement;
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter valid layer thicknesses to preview build-up."
+              t("uValue.enterValidPreview")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -5045,9 +5173,9 @@ const h = React.createElement;
             title: t("tools.uValue.label"),
             hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
-              h(SectionTitle, { label: "Climate & type", hint: "Thresholds: indicative ASHRAE 90.1 / EU EPBD" }),
+              h(SectionTitle, { label: t("uValue.climateSection"), hint: t("uValue.climateSectionHint") }),
               h(Field, {
-                label: "Climate zone",
+                label: t("uValue.climateZone"),
                 children: h(
                   "select",
                   {
@@ -5056,17 +5184,17 @@ const h = React.createElement;
                     className:
                       "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
                   },
-                  U_VALUE_CLIMATES.map((c) => h("option", { key: c.id, value: c.id }, c.label))
+                  U_VALUE_CLIMATES.map((c) => h("option", { key: c.id, value: c.id }, t(`options.uClimate.${c.id}`)))
                 ),
               }),
-              h(SectionTitle, { label: "Construction", hint: "Select envelope element" }),
+              h(SectionTitle, { label: t("uValue.constructionSection"), hint: t("uValue.constructionSectionHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: uConstructionType === "external_wall", onClick: () => setUConstructionType("external_wall") }, "External Wall"),
-                h(ValueButton, { active: uConstructionType === "roof", onClick: () => setUConstructionType("roof") }, "Roof"),
-                h(ValueButton, { active: uConstructionType === "floor", onClick: () => setUConstructionType("floor") }, "Floor"),
-                h(ValueButton, { active: uConstructionType === "window", onClick: () => setUConstructionType("window") }, "Window/Glazing"),
+                h(ValueButton, { active: uConstructionType === "external_wall", onClick: () => setUConstructionType("external_wall") }, t("options.uConstruction.external_wall")),
+                h(ValueButton, { active: uConstructionType === "roof", onClick: () => setUConstructionType("roof") }, t("options.uConstruction.roof")),
+                h(ValueButton, { active: uConstructionType === "floor", onClick: () => setUConstructionType("floor") }, t("options.uConstruction.floor")),
+                h(ValueButton, { active: uConstructionType === "window", onClick: () => setUConstructionType("window") }, t("options.uConstruction.window")),
               ]),
-              h(SectionTitle, { label: "Layer builder", hint: "1–8 layers; air gap uses fixed R = 0.18 m²K/W" }),
+              h(SectionTitle, { label: t("uValue.layerBuilderSection"), hint: t("uValue.layerBuilderHint") }),
               ...uLayers.map((layer) =>
                 h(
                   "div",
@@ -5074,7 +5202,7 @@ const h = React.createElement;
                   [
                     h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, [
                       h(Field, {
-                        label: "Material",
+                        label: t("uValue.material"),
                         children: h(
                           "select",
                           {
@@ -5083,11 +5211,11 @@ const h = React.createElement;
                             className:
                               "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)] text-sm",
                           },
-                          U_VALUE_MATERIALS.map((m) => h("option", { key: m.id, value: m.id }, m.label))
+                          U_VALUE_MATERIALS.map((m) => h("option", { key: m.id, value: m.id }, t(`options.uMaterial.${m.id}`)))
                         ),
                       }),
                       h(Field, {
-                        label: "Thickness (mm)",
+                        label: t("uValue.thicknessMm"),
                         children: h(InputBase, {
                           value: layer.thicknessMm,
                           onChange: (v) => updateULayer(layer.uid, { thicknessMm: v }),
@@ -5129,7 +5257,7 @@ const h = React.createElement;
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                "λ from literature; R = d/λ per layer except air gap (fixed R). U = 1/(Rsi + ΣR + Rso). Window/glazing uses indicative max U per EPBD-style table."
+                t("uValue.lambdaNote")
               ),
             ]),
           }),
@@ -5147,39 +5275,39 @@ const h = React.createElement;
               ur
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
-                      label: "Total thickness",
+                      label: t("uValue.totalThickness"),
                       valueText: formatSmartNumber(ur.totalThicknessMm),
-                      unitText: "mm",
+                      unitText: t("common.unitMm"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "U-value",
+                      label: t("uValue.uValueLabel"),
                       valueText: formatUValue(ur.U),
-                      unitText: "W/m²K",
+                      unitText: t("common.unitWm2K"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "R-value total",
+                      label: t("uValue.rValueTotal"),
                       valueText: formatSmartNumber(ur.Rtotal),
-                      unitText: "m²K/W",
+                      unitText: t("common.unitM2KW"),
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "Max U (climate)",
+                      label: t("uValue.maxUClimate"),
                       valueText: formatUValue(ur.uMax),
-                      unitText: "W/m²K",
+                      unitText: t("common.unitWm2K"),
                       big: false,
                     }),
                   ])
                 : null,
               ur && ur.improvementWm2K > 0
                 ? h("div", { className: "rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm font-semibold text-amber-950 dark:text-amber-100" }, [
-                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, "Improvement"),
-                    `Reduce U-value by at least ${formatUValue(ur.improvementWm2K)} W/m²K to meet indicative max U (${formatUValue(ur.uMax)} W/m²K).`,
+                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, t("uValue.improvement")),
+                    ti("uValue.improvementBody", { du: formatUValue(ur.improvementWm2K), umax: formatUValue(ur.uMax) }),
                   ])
                 : null,
               ur
-                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)]" }, "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.")
+                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)]" }, t("uValue.referenceBlurb"))
                 : null,
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
@@ -5292,7 +5420,7 @@ const h = React.createElement;
                     className: "fill-emerald-900 dark:fill-emerald-200 text-[9px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `Open ${formatSmartNumber(sr.openSpaceRatioPct)}%`
+                  ti("site.svgOpen", { v: formatSmartNumber(sr.openSpaceRatioPct) })
                 ),
                 fpW > 16 && fpH > 14
                   ? h(
@@ -5304,7 +5432,7 @@ const h = React.createElement;
                         className: "fill-zinc-950 dark:fill-zinc-50 text-[9px] font-extrabold",
                         style: { fontFamily: "system-ui, sans-serif", textShadow: "0 0 4px rgba(255,255,255,0.9)" },
                       },
-                      `Building ${formatSmartNumber(sr.footprintPct)}%`
+                      ti("site.svgBuilding", { v: formatSmartNumber(sr.footprintPct) })
                     )
                   : fpW > 1
                     ? h(
@@ -5339,7 +5467,7 @@ const h = React.createElement;
                           className: "fill-zinc-950 dark:fill-zinc-50 text-[8px] font-extrabold",
                           style: { fontFamily: "system-ui, sans-serif" },
                         },
-                        `Basement ${formatSmartNumber(sr.basementAreaM2 ?? 0)} m²`
+                        ti("site.svgBasement", { v: formatSmartNumber(sr.basementAreaM2 ?? 0) })
                       ),
                     ])
                   : null,
@@ -5371,11 +5499,11 @@ const h = React.createElement;
             hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Plot & ratios",
-                hint: "SCR = max footprint / plot; FAR = max total GFA / plot",
+                label: t("site.sectionPlotRatios"),
+                hint: t("site.sectionPlotRatiosHint"),
               }),
               h(Field, {
-                label: "Total plot area (m²)",
+                label: t("site.totalPlotM2"),
                 children: h(InputBase, {
                   value: sitePlotM2,
                   onChange: setSitePlotM2,
@@ -5386,7 +5514,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Site coverage ratio — SCR (0.00 – 1.00)",
+                label: t("site.scrField"),
                 children: h(InputBase, {
                   value: siteScrStr,
                   onChange: setSiteScrStr,
@@ -5398,7 +5526,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Floor area ratio — FAR (0.00 – 10.00)",
+                label: t("site.farField"),
                 children: h(InputBase, {
                   value: siteFarStr,
                   onChange: setSiteFarStr,
@@ -5410,7 +5538,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Number of floors (whole number, ≥ 1)",
+                label: t("site.numFloors"),
                 children: h(InputBase, {
                   value: siteFloorsStr,
                   onChange: setSiteFloorsStr,
@@ -5420,10 +5548,10 @@ const h = React.createElement;
                   min: 1,
                 }),
               }),
-              h(SectionTitle, { label: "Basement", hint: "Below-grade footprint matches max footprint when included" }),
+              h(SectionTitle, { label: t("site.basementTitle"), hint: t("site.basementHint") }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: siteBasement === false, onClick: () => setSiteBasement(false) }, "No"),
-                h(ValueButton, { active: siteBasement === true, onClick: () => setSiteBasement(true) }, "Yes"),
+                h(ValueButton, { active: siteBasement === false, onClick: () => setSiteBasement(false) }, t("common.no")),
+                h(ValueButton, { active: siteBasement === true, onClick: () => setSiteBasement(true) }, t("common.yes")),
               ]),
               h(
                 "div",
@@ -5431,7 +5559,7 @@ const h = React.createElement;
                   className:
                     "rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/30 px-4 py-3 text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed",
                 },
-                "Checks assume a uniform footprint on each floor at max SCR. FAR cap applies to total GFA; basement policy varies by code — shown for reference only."
+                t("site.policyNote")
               ),
             ]),
           }),
@@ -5449,66 +5577,69 @@ const h = React.createElement;
               sr
                 ? h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" }, [
                     h(ValueBlock, {
-                      label: "Maximum footprint area",
+                      label: t("site.maxFootprint"),
                       valueText: formatSmartNumber(sr.maxFootprintM2),
-                      unitText: "m²",
+                      unitText: t("common.unitM2"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Maximum total floor area",
+                      label: t("site.maxTotalGfa"),
                       valueText: formatSmartNumber(sr.maxTotalGfaM2),
-                      unitText: "m²",
+                      unitText: t("common.unitM2"),
                       big: true,
                     }),
                     h(ValueBlock, {
-                      label: "Maximum floor area per floor",
+                      label: t("site.maxGfaPerFloor"),
                       valueText: formatSmartNumber(sr.maxGfaPerFloorM2),
-                      unitText: "m²",
+                      unitText: t("common.unitM2"),
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "Remaining plot area (open)",
+                      label: t("site.remainingOpenPlot"),
                       valueText: formatSmartNumber(sr.remainingPlotM2),
-                      unitText: "m²",
+                      unitText: t("common.unitM2"),
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "Open space ratio",
+                      label: t("site.openSpaceRatio"),
                       valueText: formatSmartNumber(sr.openSpaceRatioPct),
                       unitText: "%",
                       big: false,
                     }),
                     h(ValueBlock, {
-                      label: "GFA demand (footprint × floors)",
+                      label: t("site.gfaDemand"),
                       valueText: formatSmartNumber(sr.gfaDemandM2),
-                      unitText: "m²",
+                      unitText: t("common.unitM2"),
                       big: false,
                     }),
                   ])
                 : null,
               sr && sr.basementIncluded && sr.basementAreaM2 != null
                 ? h("div", { className: "rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/40 px-4 py-3" }, [
-                    h("div", { className: "text-[10px] font-extrabold tracking-[.2em] uppercase text-slate-600 dark:text-slate-400 mb-1" }, "Basement (below grade)"),
-                    h("div", { className: "text-lg font-black text-[var(--st-fg)]" }, `${formatSmartNumber(sr.basementAreaM2)} m²`),
+                    h("div", { className: "text-[10px] font-extrabold tracking-[.2em] uppercase text-slate-600 dark:text-slate-400 mb-1" }, t("site.basementBelowGrade")),
+                    h("div", { className: "text-lg font-black text-[var(--st-fg)]" }, `${formatSmartNumber(sr.basementAreaM2)} ${t("common.unitM2")}`),
                   ])
                 : null,
               sr && sr.exceedsFar
                 ? h("div", { className: "rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 px-4 py-3 text-sm font-semibold text-red-950 dark:text-red-100" }, [
-                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-red-800 dark:text-red-300 mr-2" }, "FAR exceedance"),
-                    `Reduce footprint, floors, or increase allowable FAR — currently ${formatSmartNumber(sr.overGfaM2)} m² over the GFA cap.`,
+                    h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-red-800 dark:text-red-300 mr-2" }, t("site.farExceedance")),
+                    ti("site.farExceedBody", { over: formatSmartNumber(sr.overGfaM2) }),
                   ])
                 : null,
               sr && sr.complianceLevel === "yellow"
                 ? h("div", { className: "rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm font-semibold text-amber-950 dark:text-amber-100 space-y-2" }, [
                     h("div", {}, [
-                      h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, "Headroom"),
-                      `${formatSmartNumber(sr.headroomM2)} m² of GFA capacity remaining before footprint × floors would exceed FAR.`,
+                      h("span", { className: "text-[10px] font-bold uppercase tracking-[.2em] text-amber-800 dark:text-amber-300 mr-2" }, t("site.headroom")),
+                      ti("site.headroomBody", { headroom: formatSmartNumber(sr.headroomM2) }),
                     ]),
                     sr.scr > 1e-6 && Number.isFinite(sr.maxFloorsAtScr)
                       ? h(
                           "div",
                           { className: "text-xs font-semibold text-amber-900/90 dark:text-amber-200/95" },
-                          `At full SCR, FAR allows ≈ ${formatSmartNumber(sr.maxFloorsAtScr)} equal storeys of max footprint (you have ${sr.floors}).`
+                          ti("site.maxFloorsHint", {
+                            maxF: formatSmartNumber(sr.maxFloorsAtScr),
+                            have: formatInteger(sr.floors),
+                          })
                         )
                       : null,
                   ])
@@ -5541,12 +5672,7 @@ const h = React.createElement;
       }
 
       if (activeTool === "span") {
-        const SPAN_SYSTEM_OPTIONS = [
-          { value: "rc_flat", label: "Reinforced Concrete Flat Slab" },
-          { value: "rc_beam", label: "Reinforced Concrete Beam & Slab" },
-          { value: "steel", label: "Steel Beam" },
-          { value: "timber", label: "Timber Beam" },
-        ];
+        const SPAN_SYSTEM_IDS = ["rc_flat", "rc_beam", "steel", "timber"];
 
         const designBadgeClass =
           spanResult && spanResult.designStatus === "efficient"
@@ -5613,7 +5739,7 @@ const h = React.createElement;
                     className: "fill-current text-[11px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `Span ${formatSmartNumber(spanResult.spanM)} m`
+                  ti("span.diagramSpan", { v: formatSmartNumber(spanResult.spanM) })
                 ),
                 h(
                   "text",
@@ -5623,7 +5749,7 @@ const h = React.createElement;
                     className: "fill-current text-[10px] font-bold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
-                  `d = ${formatSmartNumber(spanResult.depthCm)} cm`
+                  ti("span.diagramDepth", { v: formatSmartNumber(spanResult.depthCm) })
                 ),
                 h("line", { x1: 412, y1: 44, x2: 412, y2: 78, stroke: "currentColor", strokeWidth: 1, strokeDasharray: "3 2", opacity: 0.7 }),
               ]
@@ -5634,7 +5760,7 @@ const h = React.createElement;
                 className:
                   "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
               },
-              "Enter a valid span to preview the cross-section."
+              t("span.enterValidPreview")
             );
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -5643,11 +5769,11 @@ const h = React.createElement;
             hint: t("common.inputs"),
             children: h("div", { className: "space-y-4" }, [
               h(SectionTitle, {
-                label: "Span & system",
-                hint: "Distance between supports and structural assumptions",
+                label: t("span.sectionSpanSystem"),
+                hint: t("span.sectionSpanSystemHint"),
               }),
               h(Field, {
-                label: "Span length (m)",
+                label: t("span.spanLengthM"),
                 children: h(InputBase, {
                   value: spanLengthM,
                   onChange: setSpanLengthM,
@@ -5658,7 +5784,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Structural system",
+                label: t("span.structuralSystem"),
                 children: h(
                   "select",
                   {
@@ -5667,25 +5793,22 @@ const h = React.createElement;
                     className:
                       "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
                   },
-                  SPAN_SYSTEM_OPTIONS.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label))
+                  SPAN_SYSTEM_IDS.map((id) => h("option", { key: id, value: id }, t(`options.spanSystem.${id}`)))
                 ),
               }),
               h(SectionTitle, {
-                label: "Load type",
-                hint:
-                  spanSystem === "steel" || spanSystem === "timber"
-                    ? "Depth rule for steel/timber uses typical L/d; load presets apply to RC systems."
-                    : "Presets adjust RC span-to-depth divisors.",
+                label: t("span.loadType"),
+                hint: spanSystem === "steel" || spanSystem === "timber" ? t("span.loadHintSteelTimber") : t("span.loadHintRc"),
               }),
               h("div", { className: "flex flex-wrap gap-2" }, [
-                h(ValueButton, { active: spanLoad === "light", onClick: () => setSpanLoad("light") }, "Light"),
-                h(ValueButton, { active: spanLoad === "medium", onClick: () => setSpanLoad("medium") }, "Medium"),
-                h(ValueButton, { active: spanLoad === "heavy", onClick: () => setSpanLoad("heavy") }, "Heavy"),
+                h(ValueButton, { active: spanLoad === "light", onClick: () => setSpanLoad("light") }, t("options.spanLoad.light")),
+                h(ValueButton, { active: spanLoad === "medium", onClick: () => setSpanLoad("medium") }, t("options.spanLoad.medium")),
+                h(ValueButton, { active: spanLoad === "heavy", onClick: () => setSpanLoad("heavy") }, t("options.spanLoad.heavy")),
               ]),
               h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed" }, [
-                h("div", {}, "Light — residential"),
-                h("div", {}, "Medium — office / commercial"),
-                h("div", {}, "Heavy — industrial"),
+                h("div", {}, t("span.loadExplainerLight")),
+                h("div", {}, t("span.loadExplainerMedium")),
+                h("div", {}, t("span.loadExplainerHeavy")),
               ]),
             ]),
           }),
@@ -5705,10 +5828,10 @@ const h = React.createElement;
                   { className: classNames("inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase", spanLimitBadgeClass) },
                   spanResult
                     ? spanResult.spanWarnLevel === "green"
-                      ? "Span check: OK"
+                      ? t("span.checkOk")
                       : spanResult.spanWarnLevel === "yellow"
-                        ? "Span check: Caution"
-                        : "Span check: Limit"
+                        ? t("span.checkCaution")
+                        : t("span.checkLimit")
                     : "—"
                 ),
               ]),
@@ -5724,14 +5847,14 @@ const h = React.createElement;
                 : null,
               diagramEl,
               h(ValueBlock, {
-                label: "Estimated slab / beam depth",
+                label: t("span.estimatedDepth"),
                 valueText: spanResult ? formatSmartNumber(spanResult.depthCm) : "—",
-                unitText: "cm",
+                unitText: t("common.unitCm"),
                 big: true,
               }),
               h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)]" }, [
                 h("div", { className: "p-6" }, [
-                  h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-3" }, "Column / profile suggestion"),
+                  h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-3" }, t("span.memberSuggestionTitle")),
                   h(
                     "div",
                     { className: "text-lg md:text-xl font-black tracking-tight text-[var(--st-fg)] leading-snug" },
@@ -5740,7 +5863,7 @@ const h = React.createElement;
                 ]),
               ]),
               h(ValueBlock, {
-                label: "Span-to-depth ratio (rule used)",
+                label: t("span.ldRatio"),
                 valueText: spanResult ? formatSmartNumber(spanResult.ldRatio) : "—",
                 unitText: "L/d",
                 big: false,
@@ -5805,7 +5928,7 @@ const h = React.createElement;
                 hint: t("common.rampFieldHint"),
               }),
               h(Field, {
-                label: "Total height (m)",
+                label: t("common.rampTotalHeightM"),
                 children: h(InputBase, {
                   value: rampTotalHeightM,
                   onChange: setRampTotalHeightM,
@@ -5816,7 +5939,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Desired slope (%)",
+                label: t("common.rampDesiredSlopePct"),
                 children: h(InputBase, {
                   value: rampDesiredSlopePct,
                   onChange: (v) => {
@@ -5847,9 +5970,9 @@ const h = React.createElement;
                         : "bg-[var(--st-bg)] border-[var(--st-border)] text-[var(--st-muted)]"
                     ),
                   },
-                  "Use slope"
+                  t("common.useSlope")
                 ),
-                h("div", { className: "text-center text-xs font-bold tracking-[.22em] uppercase text-[var(--st-muted)]" }, "or"),
+                h("div", { className: "text-center text-xs font-bold tracking-[.22em] uppercase text-[var(--st-muted)]" }, t("common.or")),
                 h(
                   "button",
                   {
@@ -5865,11 +5988,11 @@ const h = React.createElement;
                         : "bg-[var(--st-bg)] border-[var(--st-border)] text-[var(--st-muted)]"
                     ),
                   },
-                  "Use length"
+                  t("common.useLength")
                 ),
               ]),
               h(Field, {
-                label: "Ramp length (m)",
+                label: t("common.rampLengthM"),
                 children: h(InputBase, {
                   value: rampLengthM,
                   onChange: (v) => {
@@ -5908,7 +6031,7 @@ const h = React.createElement;
                 h("div", { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : t("common.awaitingRampInput")),
               ]),
               h(ValueBlock, {
-                label: "Calculated slope",
+                label: t("common.calculatedSlope"),
                 valueText:
                   rampResult && Number.isFinite(rampResult.slopePct)
                     ? formatSmartNumber(rampResult.slopePct)
@@ -5917,7 +6040,7 @@ const h = React.createElement;
                 big: true,
               }),
               h(ValueBlock, {
-                label: "Required ramp length",
+                label: t("common.requiredRampLength"),
                 valueText:
                   rampResult && Number.isFinite(rampResult.lengthM)
                     ? formatSmartNumber(rampResult.lengthM)
@@ -5926,7 +6049,7 @@ const h = React.createElement;
                 big: true,
               }),
               h(ValueBlock, {
-                label: "Height (confirmation)",
+                label: t("common.heightConfirmation"),
                 valueText:
                   rampResult && Number.isFinite(rampResult.heightM)
                     ? formatSmartNumber(rampResult.heightM)
@@ -5950,7 +6073,7 @@ const h = React.createElement;
                 hint: t("common.stairFieldHint"),
               }),
               h(Field, {
-                label: "Total height (m)",
+                label: t("common.stairTotalHeightM"),
                 children: h(InputBase, {
                   value: stairTotalHeightM,
                   onChange: setStairTotalHeightM,
@@ -5961,7 +6084,7 @@ const h = React.createElement;
                 }),
               }),
               h(Field, {
-                label: "Desired riser height (cm)",
+                label: t("common.stairDesiredRiserCm"),
                 children: h(InputBase, {
                   value: stairDesiredRiserCm,
                   onChange: setStairDesiredRiserCm,
@@ -5987,36 +6110,37 @@ const h = React.createElement;
             tone: "results",
             children: h("div", { className: "flex flex-col gap-4" }, [
               h(ValueBlock, {
-                label: "Number of steps",
-                valueText: stairResult ? formatSmartNumber(stairResult.steps) : "—",
+                label: t("common.numberOfSteps"),
+                valueText: stairResult ? formatInteger(stairResult.steps) : "—",
                 unitText: t("common.stepsUnit"),
                 big: true,
+                integerValue: true,
               }),
               h(ValueBlock, {
-                label: "Actual riser height",
+                label: t("common.actualRiserHeight"),
                 valueText:
                   stairResult && Number.isFinite(stairResult.actualRiserCm)
                     ? formatSmartNumber(stairResult.actualRiserCm)
                     : "—",
-                unitText: "cm",
+                unitText: t("common.unitCm"),
                 big: true,
               }),
               h(ValueBlock, {
-                label: "Total run length",
+                label: t("common.totalRunLength"),
                 valueText:
                   stairResult && Number.isFinite(stairResult.totalRunM)
                     ? formatSmartNumber(stairResult.totalRunM)
                     : "—",
-                unitText: "m",
+                unitText: t("common.unitM"),
                 big: true,
               }),
               h(ValueBlock, {
-                label: "Suggested tread depth",
+                label: t("common.suggestedTreadDepth"),
                 valueText:
                   stairResult && Number.isFinite(stairResult.suggestedTreadCm)
                     ? formatSmartNumber(stairResult.suggestedTreadCm)
                     : "—",
-                unitText: "cm",
+                unitText: t("common.unitCm"),
                 big: true,
               }),
             ]),

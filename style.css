@@ -36,6 +36,14 @@ html.dark {
   overflow: hidden; /* clips background + keeps blueprint / crane inside bounds */
 }
 
+/* Mobile: hide blueprint + crane; tighter bottom padding */
+@media (max-width: 767px) {
+  .structura-hero-edge-crane,
+  .structura-hero-floorplan-wrap {
+    display: none !important;
+  }
+}
+
 /* Legacy grid layer (optional depth); hero scene SVG is primary */
 .structura-hero-grid-bg {
   position: absolute;
