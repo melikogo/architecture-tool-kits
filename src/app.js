@@ -1436,6 +1436,470 @@ const h = React.createElement;
     return valueText;
   }
 
+  /** Module-level components so React does not remount the scale UI on every App render (fixes input focus loss). */
+  function ScaleConverterLenInput({ value, onChange, placeholder, isFt }) {
+    return h(InputBase, {
+      value,
+      onChange,
+      placeholder,
+      type: isFt ? "text" : "number",
+      step: "any",
+      min: 0,
+    });
+  }
+
+  function ScaleConverterAreaInput({ value, onChange, placeholder }) {
+    return h(InputBase, {
+      value,
+      onChange,
+      placeholder,
+      type: "number",
+      step: "any",
+      min: 0,
+    });
+  }
+
+  function ScaleConverterResultHeader({ t, statusState, statusText, localizeStatus, computed, denomSafe, unit }) {
+    const pillClasses = classNames(
+      "inline-flex items-center justify-center h-8 px-3.5 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors duration-150",
+      statusState === "ok"
+        ? "bg-[#16A34A] border-[#16A34A] text-white"
+        : statusState === "warn"
+          ? "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)]"
+          : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]"
+    );
+    return h("div", { className: "flex items-start justify-between gap-3 mb-5 pb-4 border-b border-[var(--st-border)]" }, [
+      h("div", {}, [
+        h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, t(computed.titleKey)),
+        h(
+          "div",
+          { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold" },
+          `${t("common.scale")} 1:${denomSafe} • ${t("common.unit")} ${unitLabel(unit)}`
+        ),
+      ]),
+      h("div", { className: pillClasses }, localizeStatus(statusText)),
+    ]);
+  }
+
+  function ScaleConverterResultsPanel({ tab, computed, unit, onCopy, exportHistoryCSV, onOpenPdfModal, t }) {
+    if (tab === "paper") {
+      return h("div", {}, [
+        h("div", { className: "grid grid-cols-1 gap-5" }, [
+          h(ValueBlock, {
+            label: t("common.paperAreaModel"),
+            valueText: computed.paperAreaOut || "—",
+            unitText: areaUnitLabel(unit),
+            big: true,
+          }),
+          h(ValueBlock, {
+            label: t("common.realAreaFits"),
+            valueText: computed.realAreaOut || "—",
+            unitText: areaUnitLabel(unit),
+            big: true,
+          }),
+        ]),
+        h("div", { className: "mt-5" }, [
+          h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
+            h(
+              "button",
+              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
+              t("common.copyAsText")
+            ),
+            h(
+              "button",
+              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
+              t("common.exportCsv")
+            ),
+            h(
+              "button",
+              {
+                type: "button",
+                onClick: onOpenPdfModal,
+                className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
+              },
+              t("common.exportPdf")
+            ),
+          ]),
+        ]),
+      ]);
+    }
+
+    const isConvert = tab === "convert";
+    const lenLabel = isConvert ? t("common.scaledLength") : t("common.realLength");
+    const areaLabel = isConvert ? t("common.scaledArea") : t("common.realArea");
+    const dimsLabel = isConvert ? t("common.scaledDims") : t("common.realDims");
+    const volLabel = isConvert ? t("common.scaledVolume") : t("common.realVolume");
+
+    const dimsText = [computed.wOut ?? "—", computed.hOut ?? "—", computed.dOut ?? "—"].join(" × ");
+
+    return h("div", {}, [
+      h("div", { className: "flex flex-col gap-5" }, [
+        h(ValueBlock, {
+          label: lenLabel,
+          valueText: computed.lenOut || "—",
+          unitText: unitLabel(unit),
+          big: true,
+        }),
+        h("div", { className: "grid grid-cols-1 gap-5 md:grid-cols-1" }, [
+          h(ValueBlock, {
+            label: areaLabel,
+            valueText: computed.areaOut || "—",
+            unitText: areaUnitLabel(unit),
+            big: true,
+          }),
+        ]),
+        h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-6" }, [
+          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, dimsLabel),
+          h("div", { className: "flex items-baseline gap-3 flex-wrap" }, [
+            h(AnimatedNumberText, {
+              valueText: computed.wOut && computed.hOut && computed.dOut ? dimsText : "—",
+              className: "font-black tracking-tight text-[var(--st-fg)] text-4xl tabular-nums",
+            }),
+            h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, unitLabel(unit)),
+          ]),
+          h("div", { className: "mt-4 border-t border-[var(--st-border)] pt-4" }, [
+            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, volLabel),
+            h("div", { className: "flex items-baseline gap-3" }, [
+              h(AnimatedNumberText, {
+                valueText: computed.volOut || "—",
+                className: "font-black tracking-tight text-[var(--st-fg)] text-3xl tabular-nums",
+              }),
+              h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, volumeUnitLabel(unit)),
+            ]),
+          ]),
+        ]),
+      ]),
+      h("div", { className: "mt-5" }, [
+        h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
+          h(
+            "button",
+            { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
+            t("common.copyAsText")
+          ),
+          h(
+            "button",
+            { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
+            t("common.exportCsv")
+          ),
+          h(
+            "button",
+            {
+              type: "button",
+              onClick: onOpenPdfModal,
+              className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
+            },
+            t("common.exportPdf")
+          ),
+        ]),
+      ]),
+    ]);
+  }
+
+  function ScaleConverterTabBar({ tab, setTab, t }) {
+    const tabs = [
+      { id: "convert", label: t("common.convert") },
+      { id: "reverse", label: t("common.reverse") },
+      { id: "paper", label: t("common.paperTab") },
+    ];
+    return h("div", { className: "flex gap-2 bg-[var(--st-bg)] border border-[var(--st-border)] rounded-2xl p-2 mb-4" }, [
+      tabs.map((tabItem) =>
+        h(ValueButton, {
+          key: tabItem.id,
+          active: tab === tabItem.id,
+          onClick: () => setTab(tabItem.id),
+        }, tabItem.label)
+      ),
+    ]);
+  }
+
+  function ScaleConverterScaleSelector({
+    t,
+    customDenom,
+    setCustomDenom,
+    setDenom,
+    applyCustomDenom,
+    applyScalePreset,
+    denomSafe,
+  }) {
+    return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
+      h("div", { className: "flex items-end justify-between gap-4 mb-3" }, [
+        h("div", {}, [
+          h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" }, t("common.scale")),
+          h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.customRatio")),
+        ]),
+        h("div", { className: "text-right" }, [
+          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, "1 :"),
+          h("div", { className: "flex items-center gap-2 justify-end" }, [
+            h("input", {
+              key: "scale-custom-denom",
+              value: customDenom,
+              onChange: (e) => {
+                const v = e.target.value;
+                setCustomDenom(v);
+                const n = Number(v);
+                if (Number.isFinite(n) && n > 0) setDenom(Math.round(n));
+              },
+              type: "number",
+              min: 1,
+              step: "1",
+              className: "h-11 w-28 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-3 focus:outline-none focus:border-[var(--st-accent)] text-[var(--st-fg)]",
+              onKeyDown: (e) => {
+                if (e.key === "Enter") applyCustomDenom();
+              },
+            }),
+            h(
+              "button",
+              { type: "button", onClick: applyCustomDenom, className: "h-11 px-4 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold hover:brightness-110 transition-colors duration-150" },
+              t("common.apply")
+            ),
+          ]),
+        ]),
+      ]),
+      h("div", { className: "flex flex-wrap gap-2" }, [
+        PRESETS.map((p) =>
+          h(
+            "button",
+            {
+              key: p,
+              type: "button",
+              onClick: () => applyScalePreset(p),
+              className: classNames(
+                "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
+                denomSafe === p
+                  ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                  : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
+              ),
+            },
+            `1:${p}`
+          )
+        ),
+      ]),
+    ]);
+  }
+
+  function ScaleConverterUnitSwitcher({ unit, setUnit, t }) {
+    return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
+      h("div", { className: "mb-3" }, [
+        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)]" }, t("common.unit")),
+        h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.affectsUnit")),
+      ]),
+      h("div", { className: "flex flex-wrap gap-2" }, [
+        UNIT_OPTIONS.map((u) =>
+          h(
+            "button",
+            {
+              key: u,
+              type: "button",
+              onClick: () => setUnit(u),
+              className: classNames(
+                "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
+                unit === u
+                  ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
+                  : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
+              ),
+            },
+            u === "ft-in" ? "ft-in" : u
+          )
+        ),
+      ]),
+    ]);
+  }
+
+  function ScaleConverterHistoryPanel({ t, history, onSelect }) {
+    return h("div", {}, [
+      h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, t("common.historyLast6")),
+      history.length === 0
+        ? h("div", { className: "text-xs text-[var(--st-muted)] font-semibold" }, t("common.pressEnterHistory"))
+        : h("div", { className: "flex flex-col gap-2" }, history.map((it, idx) => {
+            const label =
+              it.tab === "paper"
+                ? `${t("common.paperShort")} ${it.inputs.paperSize} • 1:${it.denom}`
+                : `${it.tab === "convert" ? t("common.convert") : t("common.reverse")} • 1:${it.denom}`;
+            return h(
+              "button",
+              {
+                key: `${it.ts}_${idx}`,
+                type: "button",
+                onClick: () => onSelect(it),
+                className:
+                  "text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] px-4 py-3 transition-colors",
+              },
+              [
+                h("div", { key: "t", className: "text-xs font-extrabold tracking-wide text-[var(--st-fg)]" }, label),
+                h("div", { key: "s", className: "text-[11px] mt-1 text-[var(--st-muted)] font-semibold" }, `${t("common.unit")} ${it.unit}`),
+              ]
+            );
+          })),
+    ]);
+  }
+
+  function ScaleConverterQuickChips({ quickChips }) {
+    return h("div", { className: "flex flex-wrap gap-2 mt-3" }, quickChips.map((c) =>
+      h(ChipButton, { key: c.label, label: c.label, onClick: c.apply })
+    ));
+  }
+
+  function ScaleConverterInputsPanel({
+    tab,
+    setTab,
+    t,
+    customDenom,
+    setCustomDenom,
+    setDenom,
+    applyCustomDenom,
+    applyScalePreset,
+    denomSafe,
+    unit,
+    setUnit,
+    history,
+    onHistorySelect,
+    quickChips,
+    isFt,
+    realLen,
+    realArea,
+    realW,
+    realH,
+    realD,
+    setRealLen,
+    setRealArea,
+    setRealW,
+    setRealH,
+    setRealD,
+    modelLen,
+    modelArea,
+    modelW,
+    modelH,
+    modelD,
+    setModelLen,
+    setModelArea,
+    setModelW,
+    setModelH,
+    setModelD,
+    paperSize,
+    setPaperSize,
+    onReset,
+  }) {
+    return h("div", {}, [
+      h(ScaleConverterTabBar, { tab, setTab, t }),
+      h(ScaleConverterScaleSelector, {
+        t,
+        customDenom,
+        setCustomDenom,
+        setDenom,
+        applyCustomDenom,
+        applyScalePreset,
+        denomSafe,
+      }),
+      h(ScaleConverterUnitSwitcher, { unit, setUnit, t }),
+
+      tab !== "paper"
+        ? h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
+            h(SectionTitle, {
+              label: tab === "convert" ? t("common.twoDRealToModel") : t("common.twoDModelToReal"),
+              hint: t("common.twoDHint"),
+            }),
+            h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-5" }, [
+              h(Field, {
+                key: "scale-field-2d-len",
+                label:
+                  tab === "convert"
+                    ? `${t("common.realLenLabel")} (${unitLabel(unit)})`
+                    : `${t("common.modelLenLabel")} (${unitLabel(unit)})`,
+                children: h(ScaleConverterLenInput, {
+                  key: "scale-input-2d-len",
+                  value: tab === "convert" ? realLen : modelLen,
+                  onChange: tab === "convert" ? setRealLen : setModelLen,
+                  placeholder: isFt ? "e.g., 5-10" : "e.g., 4.2",
+                  isFt,
+                }),
+              }),
+              h(Field, {
+                key: "scale-field-2d-area",
+                label:
+                  tab === "convert"
+                    ? `${t("common.realAreaField")} (${areaUnitLabel(unit)})`
+                    : `${t("common.modelAreaField")} (${areaUnitLabel(unit)})`,
+                children: h(ScaleConverterAreaInput, {
+                  key: "scale-input-2d-area",
+                  value: tab === "convert" ? realArea : modelArea,
+                  onChange: tab === "convert" ? setRealArea : setModelArea,
+                  placeholder: "e.g., 12.5",
+                }),
+              }),
+            ]),
+            h(ScaleConverterQuickChips, { quickChips }),
+
+            h("div", { className: "h-px bg-[var(--st-border)] my-6" }),
+
+            h(SectionTitle, { label: t("common.dimensionsVolume"), hint: t("common.threeDHint") }),
+            h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
+              h(Field, {
+                key: "scale-field-3d-w",
+                label: `${t("common.width")} (${unitLabel(unit)})`,
+                children: h(ScaleConverterLenInput, {
+                  key: "scale-input-3d-w",
+                  value: tab === "convert" ? realW : modelW,
+                  onChange: tab === "convert" ? setRealW : setModelW,
+                  placeholder: "e.g., 3",
+                  isFt,
+                }),
+              }),
+              h(Field, {
+                key: "scale-field-3d-h",
+                label: `${t("common.height")} (${unitLabel(unit)})`,
+                children: h(ScaleConverterLenInput, {
+                  key: "scale-input-3d-h",
+                  value: tab === "convert" ? realH : modelH,
+                  onChange: tab === "convert" ? setRealH : setModelH,
+                  placeholder: "e.g., 2.7",
+                  isFt,
+                }),
+              }),
+              h(Field, {
+                key: "scale-field-3d-d",
+                label: `${t("common.depth")} (${unitLabel(unit)})`,
+                children: h(ScaleConverterLenInput, {
+                  key: "scale-input-3d-d",
+                  value: tab === "convert" ? realD : modelD,
+                  onChange: tab === "convert" ? setRealD : setModelD,
+                  placeholder: "e.g., 1.5",
+                  isFt,
+                }),
+              }),
+            ]),
+          ])
+        : h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
+            h(SectionTitle, { label: t("common.paperSizeCalculator"), hint: t("common.paperAreaFitsHint") }),
+            h(Field, {
+              key: "scale-field-paper",
+              label: t("common.selectPaper"),
+              children: h("select", {
+                key: "scale-paper-select",
+                value: paperSize,
+                onChange: (e) => setPaperSize(e.target.value),
+                className:
+                  "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
+              }, Object.keys(PAPER_SIZES).map((k) => h("option", { key: k, value: k }, k))),
+            }),
+            h("div", { className: "mt-4 text-xs text-[var(--st-muted)] font-semibold" }, t("common.tipPaper")),
+          ]),
+
+      h("div", { className: "mt-5" }, [h(ScaleConverterHistoryPanel, { t, history, onSelect: onHistorySelect })]),
+
+      h("div", { className: "mt-5 flex gap-3" }, [
+        h(
+          "button",
+          {
+            type: "button",
+            onClick: onReset,
+            className: "w-full h-12 rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] text-[var(--st-fg)] font-extrabold hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors",
+          },
+          t("common.reset")
+        ),
+      ]),
+    ]);
+  }
+
   function App() {
     const { t, mergeToolMeta, lang } = useI18n();
 
@@ -3847,404 +4311,35 @@ const h = React.createElement;
       [t, unit, tab]
     );
 
-    const inputState = {
-      convert: { len: realLen, area: realArea, w: realW, h: realH, d: realD, onLen: setRealLen, onArea: setRealArea, onW: setRealW, onH: setRealH, onD: setRealD },
-      reverse: { len: modelLen, area: modelArea, w: modelW, h: modelH, d: modelD, onLen: setModelLen, onArea: setModelArea, onW: setModelW, onH: setModelH, onD: setModelD },
-    };
-
     const isFt = unit === "ft-in";
 
-    const LenInput = ({ value, onChange, placeholder }) =>
-      h(InputBase, {
-        value: value,
-        onChange,
-        placeholder,
-        type: isFt ? "text" : "number",
-        step: "any",
-        min: 0,
-      });
-
-    const AreaInput = ({ value, onChange, placeholder }) =>
-      h(InputBase, {
-        value: value,
-        onChange,
-        placeholder,
-        type: "number",
-        step: "any",
-        min: 0,
-      });
-
-    function ResultHeader() {
-      const pillClasses = classNames(
-        "inline-flex items-center justify-center h-8 px-3.5 rounded-full border text-[10px] font-extrabold tracking-[.18em] uppercase transition-colors duration-150",
-        statusState === "ok"
-          ? "bg-[#16A34A] border-[#16A34A] text-white"
-          : statusState === "warn"
-            ? "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)]"
-            : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]"
-      );
-      return h("div", { className: "flex items-start justify-between gap-3 mb-5 pb-4 border-b border-[var(--st-border)]" }, [
-        h("div", {}, [
-          h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)]" }, t(computed.titleKey)),
-          h(
-            "div",
-            { className: "mt-1.5 text-xs text-[var(--st-muted)] font-semibold" },
-            `${t("common.scale")} 1:${denomSafe} • ${t("common.unit")} ${unitLabel(unit)}`
-          ),
-        ]),
-        h("div", { className: pillClasses }, localizeStatus(status.text)),
-      ]);
-    }
-
-    function ResultsPanel() {
-      if (tab === "paper") {
-        return h("div", {}, [
-          h("div", { className: "grid grid-cols-1 gap-5" }, [
-            h(ValueBlock, {
-              label: t("common.paperAreaModel"),
-              valueText: computed.paperAreaOut || "—",
-              unitText: areaUnitLabel(unit),
-              big: true,
-            }),
-            h(ValueBlock, {
-              label: t("common.realAreaFits"),
-              valueText: computed.realAreaOut || "—",
-              unitText: areaUnitLabel(unit),
-              big: true,
-            }),
-          ]),
-          h("div", { className: "mt-5" }, [
-          h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
-            h(
-              "button",
-              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
-              t("common.copyAsText")
-            ),
-            h(
-              "button",
-              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
-              t("common.exportCsv")
-            ),
-            h(
-              "button",
-              {
-                type: "button",
-                onClick: () => setPdfModalOpen(true),
-                className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
-              },
-              t("common.exportPdf")
-            ),
-          ]),
-        ]),
-        ]);
+    const onScaleHistorySelect = useCallback((it) => {
+      setTab(it.tab);
+      setDenom(it.denom);
+      setCustomDenom(String(it.denom));
+      suppressUnitConvertRef.current = true;
+      setUnit(it.unit);
+      if (it.tab === "convert") {
+        setRealLen(it.inputs.realLen);
+        setRealArea(it.inputs.realArea);
+        setRealW(it.inputs.realW);
+        setRealH(it.inputs.realH);
+        setRealD(it.inputs.realD);
+      } else if (it.tab === "reverse") {
+        setModelLen(it.inputs.modelLen);
+        setModelArea(it.inputs.modelArea);
+        setModelW(it.inputs.modelW);
+        setModelH(it.inputs.modelH);
+        setModelD(it.inputs.modelD);
+      } else {
+        setPaperSize(it.inputs.paperSize);
       }
+      setStatus({ state: "ok", text: "Loaded from history." });
+    }, []);
 
-      const isConvert = tab === "convert";
-      const lenLabel = isConvert ? t("common.scaledLength") : t("common.realLength");
-      const areaLabel = isConvert ? t("common.scaledArea") : t("common.realArea");
-      const dimsLabel = isConvert ? t("common.scaledDims") : t("common.realDims");
-      const volLabel = isConvert ? t("common.scaledVolume") : t("common.realVolume");
-
-      const dimsText = [
-        computed.wOut ?? "—",
-        computed.hOut ?? "—",
-        computed.dOut ?? "—",
-      ].join(" × ");
-
-      return h("div", {}, [
-        h("div", { className: "flex flex-col gap-5" }, [
-          h(ValueBlock, {
-            label: lenLabel,
-            valueText: computed.lenOut || "—",
-            unitText: unitLabel(unit),
-            big: true,
-          }),
-          h("div", { className: "grid grid-cols-1 gap-5 md:grid-cols-1" }, [
-            h(ValueBlock, {
-              label: areaLabel,
-              valueText: computed.areaOut || "—",
-              unitText: areaUnitLabel(unit),
-              big: true,
-            }),
-          ]),
-          h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-6" }, [
-            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, dimsLabel),
-            h("div", { className: "flex items-baseline gap-3 flex-wrap" }, [
-              h(AnimatedNumberText, {
-                valueText: computed.wOut && computed.hOut && computed.dOut ? dimsText : "—",
-                className: "font-black tracking-tight text-[var(--st-fg)] text-4xl tabular-nums",
-              }),
-              h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, unitLabel(unit)),
-            ]),
-            h("div", { className: "mt-4 border-t border-[var(--st-border)] pt-4" }, [
-              h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, volLabel),
-              h("div", { className: "flex items-baseline gap-3" }, [
-                h(AnimatedNumberText, {
-                  valueText: computed.volOut || "—",
-                  className: "font-black tracking-tight text-[var(--st-fg)] text-3xl tabular-nums",
-                }),
-                h("div", { className: "text-xs font-extrabold tracking-[.22em] uppercase text-[var(--st-muted)]" }, volumeUnitLabel(unit)),
-              ]),
-            ]),
-          ]),
-        ]),
-        h("div", { className: "mt-5" }, [
-          h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 w-full" }, [
-            h(
-              "button",
-              { type: "button", onClick: onCopy, className: "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150" },
-              t("common.copyAsText")
-            ),
-            h(
-              "button",
-              { type: "button", onClick: exportHistoryCSV, className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150" },
-              t("common.exportCsv")
-            ),
-            h(
-              "button",
-              {
-                type: "button",
-                onClick: () => setPdfModalOpen(true),
-                className: "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
-              },
-              t("common.exportPdf")
-            ),
-          ]),
-        ]),
-      ]);
-    }
-
-    function TabBar() {
-      const tabs = [
-        { id: "convert", label: t("common.convert") },
-        { id: "reverse", label: t("common.reverse") },
-        { id: "paper", label: t("common.paperTab") },
-      ];
-      return h("div", { className: "flex gap-2 bg-[var(--st-bg)] border border-[var(--st-border)] rounded-2xl p-2 mb-4" }, [
-        tabs.map((tabItem) =>
-          h(ValueButton, {
-            key: tabItem.id,
-            active: tab === tabItem.id,
-            onClick: () => setTab(tabItem.id),
-          }, tabItem.label)
-        ),
-      ]);
-    }
-
-    function ScaleSelector() {
-      return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
-        h("div", { className: "flex items-end justify-between gap-4 mb-3" }, [
-          h("div", {}, [
-            h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" }, t("common.scale")),
-            h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.customRatio")),
-          ]),
-          h("div", { className: "text-right" }, [
-            h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-2" }, "1 :"),
-            h("div", { className: "flex items-center gap-2 justify-end" }, [
-              h("input", {
-                value: customDenom,
-                onChange: (e) => {
-                  const v = e.target.value;
-                  setCustomDenom(v);
-                  const n = Number(v);
-                  if (Number.isFinite(n) && n > 0) setDenom(Math.round(n));
-                },
-                type: "number",
-                min: 1,
-                step: "1",
-                className: "h-11 w-28 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-3 focus:outline-none focus:border-[var(--st-accent)] text-[var(--st-fg)]",
-                onKeyDown: (e) => {
-                  if (e.key === "Enter") applyCustomDenom();
-                },
-              }),
-              h(
-                "button",
-                { type: "button", onClick: applyCustomDenom, className: "h-11 px-4 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold hover:brightness-110 transition-colors duration-150" },
-                t("common.apply")
-              ),
-            ]),
-          ]),
-        ]),
-        h("div", { className: "flex flex-wrap gap-2" }, [
-          PRESETS.map((p) =>
-            h(
-              "button",
-              {
-                key: p,
-                type: "button",
-                onClick: () => applyScalePreset(p),
-                className: classNames(
-                  "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
-                  denomSafe === p
-                    ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
-                    : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
-                ),
-              },
-              `1:${p}`
-            )
-          ),
-        ]),
-      ]);
-    }
-
-    function UnitSwitcher() {
-      return h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5 mb-5" }, [
-        h("div", { className: "mb-3" }, [
-          h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)]" }, t("common.unit")),
-          h("div", { className: "mt-1 text-xs text-[var(--st-muted)] font-semibold" }, t("common.affectsUnit")),
-        ]),
-        h("div", { className: "flex flex-wrap gap-2" }, [
-          UNIT_OPTIONS.map((u) =>
-            h(
-              "button",
-              {
-                key: u,
-                type: "button",
-                onClick: () => setUnit(u),
-                className: classNames(
-                  "h-9 px-3 rounded-full border text-xs font-extrabold tracking-[.16em] uppercase transition-colors",
-                  unit === u
-                    ? "bg-[var(--st-accent)] border-[var(--st-accent)] text-white"
-                    : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))]"
-                ),
-              },
-              u === "ft-in" ? "ft-in" : u
-            )
-          ),
-        ]),
-      ]);
-    }
-
-    function HistoryPanel() {
-      return h("div", {}, [
-        h("div", { className: "text-[11px] font-semibold tracking-[.22em] uppercase text-[var(--st-muted)] mb-3" }, t("common.historyLast6")),
-        history.length === 0
-          ? h("div", { className: "text-xs text-[var(--st-muted)] font-semibold" }, t("common.pressEnterHistory"))
-          : h("div", { className: "flex flex-col gap-2" }, history.map((it, idx) => {
-              const label =
-                it.tab === "paper"
-                  ? `${t("common.paperShort")} ${it.inputs.paperSize} • 1:${it.denom}`
-                  : `${it.tab === "convert" ? t("common.convert") : t("common.reverse")} • 1:${it.denom}`;
-              return h(
-                "button",
-                {
-                  key: it.ts + "_" + idx,
-                  type: "button",
-                  onClick: () => {
-                    setTab(it.tab);
-                    setDenom(it.denom);
-                    setCustomDenom(String(it.denom));
-                    suppressUnitConvertRef.current = true;
-                    setUnit(it.unit);
-                    if (it.tab === "convert") {
-                      setRealLen(it.inputs.realLen);
-                      setRealArea(it.inputs.realArea);
-                      setRealW(it.inputs.realW);
-                      setRealH(it.inputs.realH);
-                      setRealD(it.inputs.realD);
-                    } else if (it.tab === "reverse") {
-                      setModelLen(it.inputs.modelLen);
-                      setModelArea(it.inputs.modelArea);
-                      setModelW(it.inputs.modelW);
-                      setModelH(it.inputs.modelH);
-                      setModelD(it.inputs.modelD);
-                    } else {
-                      setPaperSize(it.inputs.paperSize);
-                    }
-                    setStatus({ state: "ok", text: "Loaded from history." });
-                  },
-                  className:
-                    "text-left rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] px-4 py-3 transition-colors",
-                },
-                [
-                  h("div", { key: "t", className: "text-xs font-extrabold tracking-wide text-[var(--st-fg)]" }, label),
-                  h("div", { key: "s", className: "text-[11px] mt-1 text-[var(--st-muted)] font-semibold" }, `${t("common.unit")} ${it.unit}`),
-                ]
-              );
-            })),
-      ]);
-    }
-
-    function QuickChips() {
-      return h("div", { className: "flex flex-wrap gap-2 mt-3" }, quickChips.map((c) =>
-        h(ChipButton, { key: c.label, label: c.label, onClick: c.apply })
-      ));
-    }
-
-    function InputsPanel() {
-      const active = tab === "convert" ? "convert" : tab === "reverse" ? "reverse" : "paper";
-      return h("div", {}, [
-        h(TabBar, {}),
-        h(ScaleSelector, {}),
-        h(UnitSwitcher, {}),
-
-        tab !== "paper"
-          ? h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
-              // 2D
-              h(SectionTitle, {
-                label: tab === "convert" ? t("common.twoDRealToModel") : t("common.twoDModelToReal"),
-                hint: t("common.twoDHint"),
-              }),
-              h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4 mb-5" }, [
-                h(Field, {
-                  label:
-                    tab === "convert"
-                      ? `${t("common.realLenLabel")} (${unitLabel(unit)})`
-                      : `${t("common.modelLenLabel")} (${unitLabel(unit)})`,
-                  children: h(LenInput, { value: tab === "convert" ? realLen : modelLen, onChange: tab === "convert" ? setRealLen : setModelLen, placeholder: isFt ? "e.g., 5-10" : "e.g., 4.2" }),
-                }),
-                h(Field, {
-                  label:
-                    tab === "convert"
-                      ? `${t("common.realAreaField")} (${areaUnitLabel(unit)})`
-                      : `${t("common.modelAreaField")} (${areaUnitLabel(unit)})`,
-                  children: h(AreaInput, { value: tab === "convert" ? realArea : modelArea, onChange: tab === "convert" ? setRealArea : setModelArea, placeholder: "e.g., 12.5" }),
-                }),
-              ]),
-              h(QuickChips, {}),
-
-              // divider
-              h("div", { className: "h-px bg-[var(--st-border)] my-6" }),
-
-              // 3D
-              h(SectionTitle, { label: t("common.dimensionsVolume"), hint: t("common.threeDHint") }),
-              h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4" }, [
-                h(Field, { label: `${t("common.width")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realW : modelW, onChange: tab === "convert" ? setRealW : setModelW, placeholder: "e.g., 3" }) }),
-                h(Field, { label: `${t("common.height")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realH : modelH, onChange: tab === "convert" ? setRealH : setModelH, placeholder: "e.g., 2.7" }) }),
-                h(Field, { label: `${t("common.depth")} (${unitLabel(unit)})`, children: h(LenInput, { value: tab === "convert" ? realD : modelD, onChange: tab === "convert" ? setRealD : setModelD, placeholder: "e.g., 1.5" }) }),
-              ]),
-            ])
-          : h("div", { className: "bg-[var(--st-bg)] border border-[var(--st-border)] rounded-3xl p-5" }, [
-              h(SectionTitle, { label: t("common.paperSizeCalculator"), hint: t("common.paperAreaFitsHint") }),
-              h(Field, {
-                label: t("common.selectPaper"),
-                children: h("select", {
-                  value: paperSize,
-                  onChange: (e) => setPaperSize(e.target.value),
-                  className:
-                    "w-full h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-[var(--st-fg)]",
-                }, Object.keys(PAPER_SIZES).map((k) => h("option", { key: k, value: k }, k))),
-              }),
-              h("div", { className: "mt-4 text-xs text-[var(--st-muted)] font-semibold" }, t("common.tipPaper")),
-            ]),
-
-        h("div", { className: "mt-5" }, [
-          h(HistoryPanel, {}),
-        ]),
-
-        h("div", { className: "mt-5 flex gap-3" }, [
-          h(
-            "button",
-            {
-              type: "button",
-              onClick: onReset,
-              className: "w-full h-12 rounded-2xl bg-[var(--st-bg)] border border-[var(--st-border)] text-[var(--st-fg)] font-extrabold hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors",
-            },
-            t("common.reset")
-          ),
-        ]),
-      ]);
-    }
+    const onOpenScalePdfModal = useCallback(() => {
+      setPdfModalOpen(true);
+    }, []);
 
     function renderMainToolContent() {
       if (activeTool === "room") {
@@ -6153,14 +6248,72 @@ const h = React.createElement;
           title: t("common.inputs"),
           hint:
             tab === "paper" ? t("common.paperSizeMode") : tab === "reverse" ? t("common.modelToRealMode") : t("common.realToModelMode"),
-          children: h(InputsPanel, {}),
+          children: h(ScaleConverterInputsPanel, {
+            tab,
+            setTab,
+            t,
+            customDenom,
+            setCustomDenom,
+            setDenom,
+            applyCustomDenom,
+            applyScalePreset,
+            denomSafe,
+            unit,
+            setUnit,
+            history,
+            onHistorySelect: onScaleHistorySelect,
+            quickChips,
+            isFt,
+            realLen,
+            realArea,
+            realW,
+            realH,
+            realD,
+            setRealLen,
+            setRealArea,
+            setRealW,
+            setRealH,
+            setRealD,
+            modelLen,
+            modelArea,
+            modelW,
+            modelH,
+            modelD,
+            setModelLen,
+            setModelArea,
+            setModelW,
+            setModelH,
+            setModelD,
+            paperSize,
+            setPaperSize,
+            onReset,
+          }),
         }),
         h(Card, {
           title: t("common.results"),
           hint: t("common.instantOutputsHint"),
           right: null,
           tone: "results",
-          children: [h(ResultHeader, {}), h(ResultsPanel, {})],
+          children: [
+            h(ScaleConverterResultHeader, {
+              t,
+              statusState,
+              statusText: status.text,
+              localizeStatus,
+              computed,
+              denomSafe,
+              unit,
+            }),
+            h(ScaleConverterResultsPanel, {
+              tab,
+              computed,
+              unit,
+              onCopy,
+              exportHistoryCSV,
+              onOpenPdfModal: onOpenScalePdfModal,
+              t,
+            }),
+          ],
         }),
       ]);
     }
