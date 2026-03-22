@@ -531,206 +531,103 @@ const h = React.createElement;
   }
 
   /**
-   * Left-side under-construction silhouette: floors draw L→R (400ms stagger), then scaffolding + roof crane sway.
-   * Pure SVG + CSS; 8s loop. See .structura-hero-construction-* in style.css.
+   * Shared under-construction sketch (floors draw → scaffold → roof crane). Same SVG for left + center hero.
+   * @param {{ className?: string, keyPrefix?: string }} opts
    */
-  function LandingHeroConstructionBuilding() {
+  function HeroConstructionSketchSvg(opts) {
+    const className = opts?.className ?? "structura-hero-construction-svg";
+    const kp = (k) => `${opts?.keyPrefix ?? ""}${k}`;
     const ns = "http://www.w3.org/2000/svg";
     const floorY = [248, 204, 160, 116, 72];
     const scaffoldV = [52, 82, 112, 142, 168];
     const scaffoldH = [226, 182, 138, 94];
+    return h(
+      "svg",
+      {
+        className,
+        viewBox: "0 0 220 300",
+        xmlns: ns,
+        fill: "none",
+        focusable: "false",
+      },
+      [
+        ...floorY.map((y, i) =>
+          h("path", {
+            key: kp(`fl-${i}`),
+            className: `structura-uc-floor structura-uc-floor--${i + 1}`,
+            d: `M 48 ${y} L 172 ${y}`,
+            pathLength: 1,
+            strokeLinecap: "butt",
+          })
+        ),
+        h(
+          "g",
+          { className: "structura-uc-scaffold" },
+          [
+            h("line", { key: kp("sg-0"), className: "structura-uc-scaffold-line", x1: 44, y1: 252, x2: 176, y2: 252 }),
+            h("line", { key: kp("sg-1"), className: "structura-uc-scaffold-line", x1: 44, y1: 248, x2: 44, y2: 68 }),
+            h("line", { key: kp("sg-2"), className: "structura-uc-scaffold-line", x1: 176, y1: 248, x2: 176, y2: 68 }),
+            ...scaffoldV.map((x) =>
+              h("line", { key: kp(`sv-${x}`), className: "structura-uc-scaffold-line", x1: x, y1: 248, x2: x, y2: 72 })
+            ),
+            ...scaffoldH.map((y) =>
+              h("line", { key: kp(`sh-${y}`), className: "structura-uc-scaffold-line", x1: 44, y1: y, x2: 176, y2: y })
+            ),
+          ]
+        ),
+        h(
+          "g",
+          { className: "structura-uc-roof-crane", transform: "translate(110, 68)" },
+          [
+            h("line", { key: kp("cm"), className: "structura-uc-crane-mast", x1: 0, y1: 0, x2: 0, y2: -26, strokeLinecap: "square" }),
+            h(
+              "g",
+              { className: "structura-uc-crane-jib", transform: "translate(0,-26)" },
+              [
+                h("line", {
+                  key: kp("cj"),
+                  className: "structura-uc-crane-line",
+                  x1: 0,
+                  y1: 0,
+                  x2: 50,
+                  y2: -8,
+                  strokeLinecap: "square",
+                }),
+                h("line", {
+                  key: kp("cc"),
+                  className: "structura-uc-crane-line structura-uc-crane-cable",
+                  x1: 38,
+                  y1: -6,
+                  x2: 38,
+                  y2: 36,
+                  strokeDasharray: "2 3",
+                  strokeLinecap: "round",
+                }),
+                h("path", {
+                  key: kp("ch"),
+                  className: "structura-uc-crane-hook",
+                  d: "M 34 36 L 42 36 L 38 42 Z",
+                }),
+              ]
+            ),
+          ]
+        ),
+      ]
+    );
+  }
+
+  /** Left-side under-construction silhouette — same SVG as center; see style.css */
+  function LandingHeroConstructionBuilding() {
     return h("div", { className: "structura-hero-construction-building", "aria-hidden": true }, [
-      h(
-        "svg",
-        {
-          className: "structura-hero-construction-svg",
-          viewBox: "0 0 220 300",
-          xmlns: ns,
-          fill: "none",
-          focusable: "false",
-        },
-        [
-          /* Floors: bottom → top, each draws L→R via stroke-dash (pathLength=1) */
-          ...floorY.map((y, i) =>
-            h("path", {
-              key: `fl-${i}`,
-              className: `structura-uc-floor structura-uc-floor--${i + 1}`,
-              d: `M 48 ${y} L 172 ${y}`,
-              pathLength: 1,
-              strokeLinecap: "butt",
-            })
-          ),
-          /* Scaffolding + outline: fades in after floors */
-          h(
-            "g",
-            { className: "structura-uc-scaffold" },
-            [
-              h("line", { className: "structura-uc-scaffold-line", x1: 44, y1: 252, x2: 176, y2: 252 }),
-              h("line", { className: "structura-uc-scaffold-line", x1: 44, y1: 248, x2: 44, y2: 68 }),
-              h("line", { className: "structura-uc-scaffold-line", x1: 176, y1: 248, x2: 176, y2: 68 }),
-              ...scaffoldV.map((x) =>
-                h("line", { key: `sv-${x}`, className: "structura-uc-scaffold-line", x1: x, y1: 248, x2: x, y2: 72 })
-              ),
-              ...scaffoldH.map((y) =>
-                h("line", { key: `sh-${y}`, className: "structura-uc-scaffold-line", x1: 44, y1: y, x2: 176, y2: y })
-              ),
-            ]
-          ),
-          /* Roof crane: jib group origin = mast top for sway */
-          h(
-            "g",
-            { className: "structura-uc-roof-crane", transform: "translate(110, 68)" },
-            [
-              h("line", { className: "structura-uc-crane-mast", x1: 0, y1: 0, x2: 0, y2: -26, strokeLinecap: "square" }),
-              h(
-                "g",
-                { className: "structura-uc-crane-jib", transform: "translate(0,-26)" },
-                [
-                  h("line", {
-                    className: "structura-uc-crane-line",
-                    x1: 0,
-                    y1: 0,
-                    x2: 50,
-                    y2: -8,
-                    strokeLinecap: "square",
-                  }),
-                  h("line", {
-                    className: "structura-uc-crane-line structura-uc-crane-cable",
-                    x1: 38,
-                    y1: -6,
-                    x2: 38,
-                    y2: 36,
-                    strokeDasharray: "2 3",
-                    strokeLinecap: "round",
-                  }),
-                  h("path", {
-                    className: "structura-uc-crane-hook",
-                    d: "M 34 36 L 42 36 L 38 42 Z",
-                  }),
-                ]
-              ),
-            ]
-          ),
-        ]
-      ),
+      HeroConstructionSketchSvg({ className: "structura-hero-construction-svg", keyPrefix: "" }),
     ]);
   }
 
-  /**
-   * Center hero: straight front elevation, stroke-only SVG; rotateY 12s + float. md+ only.
-   * 6 storeys: ground = door; upper 5 = 3 windows each. 160×260, 18% stroke opacity.
-   */
+  /** Center: duplicate of left construction sketch, scaled up; md+ only. */
   function LandingHeroWireframe3D() {
-    const ns = "http://www.w3.org/2000/svg";
-    const W = 160;
-    const H = 260;
-    const floors = 6;
-    const innerTop = 1;
-    const innerLeft = 1;
-    const innerW = W - 2;
-    const innerH = H - 2;
-    const fh = innerH / floors;
-    const ix0 = innerLeft + 2;
-    const ix1 = innerLeft + innerW - 2;
-    const innerFaceW = ix1 - ix0;
-    const gap = 8;
-    const winW = (innerFaceW - 2 * gap) / 3;
-    const padY = 7;
-    const innerBot = innerTop + innerH;
-
-    let ki = 0;
-    const key = () => `fe-${ki++}`;
-    const els = [];
-
-    els.push(
-      h("rect", {
-        key: key(),
-        className: "structura-front-outer",
-        x: innerLeft,
-        y: innerTop,
-        width: innerW,
-        height: innerH,
-        fill: "none",
-      })
-    );
-
-    for (let i = 1; i < floors; i += 1) {
-      const y = innerTop + i * fh;
-      els.push(
-        h("line", {
-          key: key(),
-          className: "structura-front-slab",
-          x1: innerLeft,
-          y1: y,
-          x2: innerLeft + innerW,
-          y2: y,
-          fill: "none",
-        })
-      );
-    }
-
-    /* s = storey from bottom: 0 = ground (door only); s = 1..5 = three windows each */
-    for (let s = 1; s < floors; s += 1) {
-      const yBandBot = innerBot - s * fh;
-      const yBandTop = innerBot - (s + 1) * fh;
-      const winTop = yBandTop + padY;
-      const winH = yBandBot - yBandTop - 2 * padY;
-      if (winH < 4) continue;
-      for (let j = 0; j < 3; j += 1) {
-        const x = ix0 + j * (winW + gap);
-        els.push(
-          h("rect", {
-            key: key(),
-            className: "structura-front-opening",
-            x,
-            y: winTop,
-            width: winW,
-            height: winH,
-            fill: "none",
-          })
-        );
-      }
-    }
-
-    const gTop = innerBot - fh;
-    const gBot = innerBot;
-    const doorW = 44;
-    const doorH = (gBot - gTop) * 0.68;
-    const doorX = (W - doorW) / 2;
-    const doorY = gBot - 4 - doorH;
-    els.push(
-      h("rect", {
-        key: key(),
-        className: "structura-front-door",
-        x: doorX,
-        y: doorY,
-        width: doorW,
-        height: doorH,
-        fill: "none",
-      })
-    );
-
     return h("div", { className: "structura-hero-wireframe-slot", "aria-hidden": true }, [
-      h("div", { className: "structura-hero-wireframe-wrap" }, [
-        h("div", { className: "structura-hero-wireframe-perspective" }, [
-          h("div", { className: "structura-hero-wireframe-float" }, [
-            h("div", { className: "structura-hero-wireframe-spin" }, [
-              h(
-                "svg",
-                {
-                  className: "structura-front-svg",
-                  xmlns: ns,
-                  viewBox: `0 0 ${W} ${H}`,
-                  width: W,
-                  height: H,
-                  fill: "none",
-                  focusable: "false",
-                },
-                h("g", { className: "structura-front-building" }, ...els)
-              ),
-            ]),
-          ]),
-        ]),
+      h("div", { className: "structura-hero-construction-building structura-hero-construction-building--center" }, [
+        HeroConstructionSketchSvg({ className: "structura-hero-construction-svg", keyPrefix: "c-" }),
       ]),
     ]);
   }
