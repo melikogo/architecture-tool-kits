@@ -133,6 +133,30 @@ const h = React.createElement;
     { id: "storage", name: "Storage", minAreaM2: 4, minDimM: 1.8 },
   ];
 
+  /** Building Load Calculator — indicative EN 1991-1-1 style characteristic values (kN/m²) */
+  const LOAD_CALC_LIVE_KNM2 = {
+    residential: 2.0,
+    office: 3.0,
+    retail: 4.0,
+    hospital: 4.0,
+    industrial: 7.5,
+    education: 3.0,
+  };
+  const LOAD_CALC_FLOOR_DEAD_KNM2 = {
+    rc_flat: 5.0,
+    rc_beam: 6.0,
+    steel_composite: 3.5,
+    timber: 2.0,
+  };
+  const LOAD_CALC_FACADE_KNM2 = {
+    light: 0.5,
+    medium: 1.5,
+    heavy: 3.0,
+  };
+  const LOAD_CALC_ROOF_DEAD_KNM2 = 2.0;
+  const LOAD_CALC_ROOF_LIVE_KNM2 = 0.75;
+  const LOAD_CALC_DEFAULT_TRIBUTARY_M2 = 25;
+
   const FT_TO_M = 0.3048;
   const IN_TO_M = 0.0254;
   const FT2_TO_M2 = FT_TO_M * FT_TO_M;
@@ -301,14 +325,22 @@ const h = React.createElement;
     return rounded.toFixed(1);
   }
 
+  /** kN/m² etc. — two decimal places */
+  function formatLoadKnM2(n) {
+    if (n == null || !Number.isFinite(n)) return "—";
+    const rounded = Math.round(n * 100) / 100;
+    return rounded.toFixed(2);
+  }
+
   /** Whole numbers only (steps, exits, parking spaces, etc.) — no trailing “.0” */
   function formatInteger(n) {
     if (n == null || !Number.isFinite(n)) return "—";
     return String(Math.round(n));
   }
 
-  function AnimatedNumberText({ valueText, className, integer }) {
-    const fmt = integer ? formatInteger : formatSmartNumber;
+  function AnimatedNumberText({ valueText, className, integer, decimals }) {
+    const fmt =
+      integer ? formatInteger : decimals === 2 ? (n) => formatLoadKnM2(n) : formatSmartNumber;
     const [display, setDisplay] = useState(valueText);
     const rootRef = useRef(null);
     const tweenProxyRef = useRef({ v: 0 });
@@ -342,7 +374,7 @@ const h = React.createElement;
           }
         );
       },
-      { scope: rootRef, dependencies: [valueText, integer] }
+      { scope: rootRef, dependencies: [valueText, integer, decimals] }
     );
     return h("div", { ref: rootRef, className }, display);
   }
@@ -1338,6 +1370,13 @@ const h = React.createElement;
           h("circle", { ...stroke, fill: "currentColor", cx: "10", cy: "16", r: "1.25" }),
           h("circle", { ...stroke, fill: "currentColor", cx: "16", cy: "16", r: "1.25" })
         );
+      case "loadCalculator":
+        return h(
+          "svg",
+          c,
+          h("path", { ...stroke, d: "M8 4v16M5 8h6M5 12h6M5 16h6" }),
+          h("path", { ...stroke, d: "M14 6v2M14 10v2M14 14v2" })
+        );
       case "siteCoverage":
         return h("svg", c, h("rect", { ...stroke, x: "3", y: "5", width: "18", height: "14", rx: "1" }), h("rect", { ...stroke, x: "8", y: "9", width: "8", height: "6", rx: "0.5" }));
       case "parking":
@@ -1514,7 +1553,7 @@ const h = React.createElement;
     );
   }
 
-  function ValueBlock({ label, valueText, unitText, big, integerValue, children }) {
+  function ValueBlock({ label, valueText, unitText, big, integerValue, decimals, children }) {
     return h("div", { className: "border border-[var(--st-border)] rounded-3xl bg-[var(--st-bg)]" }, [
       h("div", { className: "p-6" }, [
         h("div", { className: "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-muted)] mb-4" }, label),
@@ -1525,6 +1564,7 @@ const h = React.createElement;
             h(AnimatedNumberText, {
               valueText: valueText || "—",
               integer: integerValue,
+              decimals: decimals,
               className: classNames(
                 "font-black tracking-tight text-[var(--st-fg)] leading-none tabular-nums",
                 big ? "text-7xl md:text-8xl" : "text-4xl"
@@ -2072,6 +2112,12 @@ const h = React.createElement;
         intro: "Divide a rectangular footprint into structural bays, count columns, and check indicative slab span and span-to-depth efficiency.",
       },
       {
+        id: "loadCalculator",
+        label: "Building Load Calculator",
+        description: "Floor load and structural weight estimator",
+        intro: "Estimate indicative dead and live floor loads from EN 1991-style tables, total building weight, and per-column foundation load using optional grid spacing.",
+      },
+      {
         id: "siteCoverage",
         label: "Site Coverage Calculator",
         description: "Plot ratio, coverage and floor area calculator",
@@ -2114,7 +2160,7 @@ const h = React.createElement;
         {
           id: "geometry",
           label: t("nav.geometry"),
-          toolIds: ["scale", "stair", "ramp", "span", "gridCalculator", "siteCoverage", "parking", "room"],
+          toolIds: ["scale", "stair", "ramp", "span", "gridCalculator", "loadCalculator", "siteCoverage", "parking", "room"],
         },
         { id: "compliance", label: t("nav.compliance"), toolIds: ["fireEscape"] },
         { id: "environment", label: t("nav.environment"), toolIds: ["daylight", "uValue"] },
@@ -2129,6 +2175,7 @@ const h = React.createElement;
       ramp: "/ramp-calculator",
       span: "/span-calculator",
       gridCalculator: "/grid-calculator",
+      loadCalculator: "/load-calculator",
       room: "/room-program",
       parking: "/parking-calculator",
       daylight: "/daylight-calculator",
@@ -2143,6 +2190,7 @@ const h = React.createElement;
       if (p === "/scale-converter") return "scale";
       if (p === "/span-calculator") return "span";
       if (p === "/grid-calculator") return "gridCalculator";
+      if (p === "/load-calculator") return "loadCalculator";
       if (p === "/stair-calculator") return "stair";
       if (p === "/ramp-calculator") return "ramp";
       if (p === "/room-program") return "room";
@@ -2223,6 +2271,15 @@ const h = React.createElement;
     const [gridPrefBayWidthM, setGridPrefBayWidthM] = useState("8");
     const [gridPrefBayDepthM, setGridPrefBayDepthM] = useState("6");
     const [gridStructureType, setGridStructureType] = useState("rc"); // rc | steel | timber
+
+    const [loadNumFloors, setLoadNumFloors] = useState("4");
+    const [loadFloorAreaM2, setLoadFloorAreaM2] = useState("500");
+    const [loadBuildingUse, setLoadBuildingUse] = useState("office");
+    const [loadFloorSystem, setLoadFloorSystem] = useState("rc_flat");
+    const [loadFacadeType, setLoadFacadeType] = useState("medium");
+    const [loadIncludeRoof, setLoadIncludeRoof] = useState(true);
+    const [loadGridSpacingXm, setLoadGridSpacingXm] = useState("");
+    const [loadGridSpacingYm, setLoadGridSpacingYm] = useState("");
 
     const [roomProgramTypeId, setRoomProgramTypeId] = useState("bedroom");
     const [roomProgramAreaStr, setRoomProgramAreaStr] = useState("12.0");
@@ -2708,6 +2765,80 @@ const h = React.createElement;
       gridPrefBayWidthM,
       gridPrefBayDepthM,
       gridStructureType,
+      t,
+    ]);
+
+    const loadResult = useMemo(() => {
+      const nF = Math.floor(Number(loadNumFloors));
+      const A = Number(loadFloorAreaM2);
+      if (!Number.isFinite(nF) || nF < 1 || !Number.isFinite(A) || A <= 0) return null;
+
+      const liveRaw = LOAD_CALC_LIVE_KNM2[loadBuildingUse];
+      const floorDeadRaw = LOAD_CALC_FLOOR_DEAD_KNM2[loadFloorSystem];
+      const facadeRaw = LOAD_CALC_FACADE_KNM2[loadFacadeType];
+      if (!Number.isFinite(liveRaw) || !Number.isFinite(floorDeadRaw) || !Number.isFinite(facadeRaw)) return null;
+
+      const round2 = (x) => Math.round(x * 100) / 100;
+      const round1w = (x) => Math.round(x * 10) / 10;
+
+      const deadPerFloorKnM2 = round2(floorDeadRaw + facadeRaw);
+      const livePerFloorKnM2 = round2(liveRaw);
+      const totalFloorKnM2 = round2(deadPerFloorKnM2 + livePerFloorKnM2);
+
+      const roofDead = round2(LOAD_CALC_ROOF_DEAD_KNM2);
+      const roofLive = round2(LOAD_CALC_ROOF_LIVE_KNM2);
+      const roofTotalKnM2 = round2(roofDead + roofLive);
+
+      let totalKnRaw = nF * A * totalFloorKnM2;
+      if (loadIncludeRoof) totalKnRaw += A * (roofDead + roofLive);
+      const totalBuildingKn = round1w(totalKnRaw);
+      const tonnes = round1w(totalBuildingKn / 9.80665);
+
+      const sx = Number(loadGridSpacingXm);
+      const sy = Number(loadGridSpacingYm);
+      let tributaryM2 = LOAD_CALC_DEFAULT_TRIBUTARY_M2;
+      let usedGridForFoundation = false;
+      if (Number.isFinite(sx) && Number.isFinite(sy) && sx > 0 && sy > 0) {
+        tributaryM2 = round2(sx * sy);
+        usedGridForFoundation = true;
+      }
+      const numColumnsApprox = Math.max(1, Math.round(A / tributaryM2));
+      const foundationKnPerColumn = round1w(totalBuildingKn / numColumnsApprox);
+
+      let loadCategory = "light";
+      if (totalFloorKnM2 >= 13) loadCategory = "veryHeavy";
+      else if (totalFloorKnM2 >= 9) loadCategory = "heavy";
+      else if (totalFloorKnM2 >= 6.5) loadCategory = "medium";
+
+      return {
+        numFloors: nF,
+        floorAreaM2: A,
+        deadPerFloorKnM2,
+        livePerFloorKnM2,
+        totalFloorKnM2,
+        totalBuildingKn,
+        tonnes,
+        foundationKnPerColumn,
+        numColumnsApprox,
+        usedGridForFoundation,
+        tributaryM2,
+        loadCategory,
+        loadCategoryLabel: t(`loadCalc.category.${loadCategory}`),
+        roofIncluded: loadIncludeRoof,
+        roofTotalKnM2: loadIncludeRoof ? roofTotalKnM2 : null,
+        useLabel: t(`options.loadBuildingUse.${loadBuildingUse}`),
+        floorSystemLabel: t(`options.loadFloorSystem.${loadFloorSystem}`),
+        facadeLabel: t(`options.loadFacadeType.${loadFacadeType}`),
+      };
+    }, [
+      loadNumFloors,
+      loadFloorAreaM2,
+      loadBuildingUse,
+      loadFloorSystem,
+      loadFacadeType,
+      loadIncludeRoof,
+      loadGridSpacingXm,
+      loadGridSpacingYm,
       t,
     ]);
 
@@ -3622,6 +3753,29 @@ const h = React.createElement;
         }
         return;
       }
+      if (activeTool === "loadCalculator") {
+        const text = formatLoadCalculatorCopyText();
+        const ok = await copyText(text);
+        if (ok) {
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+          return;
+        }
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.setAttribute("readonly", "true");
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus({ state: "ok", text: "Copied to clipboard." });
+        } catch {
+          setStatus({ state: "warn", text: "Copy failed. Try again." });
+        }
+        return;
+      }
       if (!anyValuePresent) {
         setStatus({ state: "warn", text: "Nothing to copy yet." });
         return;
@@ -3981,6 +4135,46 @@ const h = React.createElement;
       return lines.join("\n");
     }
 
+    function formatLoadCalculatorCopyText() {
+      const lines = [t("tools.loadCalculator.label"), "", `Timestamp: ${new Date().toLocaleString()}`, ""];
+      if (!loadResult) {
+        lines.push(t("loadCalc.enterValid"));
+        return lines.join("\n");
+      }
+      const r = loadResult;
+      lines.push(t("common.inputs"));
+      lines.push(ti("export.loadCalc.floorsLine", { v: formatInteger(r.numFloors) }));
+      lines.push(ti("export.loadCalc.areaLine", { v: formatSmartNumber(r.floorAreaM2) }));
+      lines.push(ti("export.loadCalc.useLine", { v: r.useLabel }));
+      lines.push(ti("export.loadCalc.floorSystemLine", { v: r.floorSystemLabel }));
+      lines.push(ti("export.loadCalc.facadeLine", { v: r.facadeLabel }));
+      lines.push(
+        ti("export.loadCalc.roofLine", {
+          v: r.roofIncluded ? t("common.yes") : t("common.no"),
+        })
+      );
+      lines.push("");
+      lines.push(t("common.autoCalculate"));
+      lines.push(ti("export.loadCalc.deadLine", { v: formatLoadKnM2(r.deadPerFloorKnM2) }));
+      lines.push(ti("export.loadCalc.liveLine", { v: formatLoadKnM2(r.livePerFloorKnM2) }));
+      lines.push(ti("export.loadCalc.totalFloorLine", { v: formatLoadKnM2(r.totalFloorKnM2) }));
+      lines.push(ti("export.loadCalc.totalKnLine", { v: formatSmartNumber(r.totalBuildingKn) }));
+      lines.push(ti("export.loadCalc.tonnesLine", { v: formatSmartNumber(r.tonnes) }));
+      lines.push(ti("export.loadCalc.foundationLine", { v: formatSmartNumber(r.foundationKnPerColumn) }));
+      lines.push(ti("export.loadCalc.categoryLine", { v: r.loadCategoryLabel }));
+      lines.push(ti("export.loadCalc.columnsApproxLine", { v: formatInteger(r.numColumnsApprox) }));
+      lines.push(
+        ti("export.loadCalc.tributaryLine", {
+          v: formatSmartNumber(r.tributaryM2),
+          basis: r.usedGridForFoundation ? t("loadCalc.tributaryFromGrid") : t("loadCalc.tributaryDefault"),
+        })
+      );
+      lines.push("");
+      lines.push(t("loadCalc.referenceLine"));
+      lines.push(t("loadCalc.roofNote"));
+      return lines.join("\n");
+    }
+
     function buildPDFLines(projectName) {
       if (activeTool === "uValue") {
         const timestamp = new Date().toLocaleString();
@@ -4199,6 +4393,50 @@ const h = React.createElement;
         lines.push(t("gridCalc.note"));
         return lines;
       }
+      if (activeTool === "loadCalculator") {
+        const timestamp = new Date().toLocaleString();
+        const lines = [];
+        lines.push(projectName ? projectName : "Project (untitled)");
+        lines.push(t("tools.loadCalculator.label"));
+        lines.push(`Timestamp: ${timestamp}`);
+        lines.push("");
+        if (!loadResult) {
+          lines.push(t("loadCalc.enterValid"));
+          return lines;
+        }
+        const r = loadResult;
+        lines.push(t("common.inputs"));
+        lines.push(ti("export.loadCalc.floorsLine", { v: formatInteger(r.numFloors) }));
+        lines.push(ti("export.loadCalc.areaLine", { v: formatSmartNumber(r.floorAreaM2) }));
+        lines.push(ti("export.loadCalc.useLine", { v: r.useLabel }));
+        lines.push(ti("export.loadCalc.floorSystemLine", { v: r.floorSystemLabel }));
+        lines.push(ti("export.loadCalc.facadeLine", { v: r.facadeLabel }));
+        lines.push(
+          ti("export.loadCalc.roofLine", {
+            v: r.roofIncluded ? t("common.yes") : t("common.no"),
+          })
+        );
+        lines.push("");
+        lines.push(t("common.autoCalculate"));
+        lines.push(ti("export.loadCalc.deadLine", { v: formatLoadKnM2(r.deadPerFloorKnM2) }));
+        lines.push(ti("export.loadCalc.liveLine", { v: formatLoadKnM2(r.livePerFloorKnM2) }));
+        lines.push(ti("export.loadCalc.totalFloorLine", { v: formatLoadKnM2(r.totalFloorKnM2) }));
+        lines.push(ti("export.loadCalc.totalKnLine", { v: formatSmartNumber(r.totalBuildingKn) }));
+        lines.push(ti("export.loadCalc.tonnesLine", { v: formatSmartNumber(r.tonnes) }));
+        lines.push(ti("export.loadCalc.foundationLine", { v: formatSmartNumber(r.foundationKnPerColumn) }));
+        lines.push(ti("export.loadCalc.categoryLine", { v: r.loadCategoryLabel }));
+        lines.push(ti("export.loadCalc.columnsApproxLine", { v: formatInteger(r.numColumnsApprox) }));
+        lines.push(
+          ti("export.loadCalc.tributaryLine", {
+            v: formatSmartNumber(r.tributaryM2),
+            basis: r.usedGridForFoundation ? t("loadCalc.tributaryFromGrid") : t("loadCalc.tributaryDefault"),
+          })
+        );
+        lines.push("");
+        lines.push(t("loadCalc.referenceLine"));
+        lines.push(t("loadCalc.roofNote"));
+        return lines;
+      }
       if (activeTool === "siteCoverage") {
         const timestamp = new Date().toLocaleString();
         const lines = [];
@@ -4303,6 +4541,7 @@ const h = React.createElement;
         const yMax =
           activeTool === "span" ||
           activeTool === "gridCalculator" ||
+          activeTool === "loadCalculator" ||
           activeTool === "parking" ||
           activeTool === "daylight" ||
           activeTool === "fireEscape" ||
@@ -4363,6 +4602,53 @@ const h = React.createElement;
             doc.text(ti("gridCalc.dimYLabel", { n: gr.ny, v: formatSmartNumber(gr.actualBayD) }), sx + bw + 6, sy + bh / 2);
             doc.setTextColor(0);
             y += bh + 26;
+          }
+        }
+
+        if (activeTool === "loadCalculator" && loadResult) {
+          y += 10;
+          if (y < 640) {
+            const lr = loadResult;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.text(t("loadCalc.sectionDiagram"), marginX, y);
+            y += 16;
+            doc.setFont("helvetica", "normal");
+            const sx = marginX + 70;
+            const sy = y;
+            const bw = 72;
+            const bh = 138;
+            const nRoof = lr.roofIncluded ? 1 : 0;
+            const nLv = lr.numFloors + nRoof;
+            const hSeg = bh / Math.max(nLv, 1);
+            const qs = [];
+            if (lr.roofIncluded && lr.roofTotalKnM2 != null) qs.push(lr.roofTotalKnM2);
+            for (let i = 0; i < lr.numFloors; i++) qs.push(lr.totalFloorKnM2);
+            const maxQ = Math.max(...qs.map((q) => (Number.isFinite(q) ? q : 0)), 0.01);
+            doc.setDrawColor(55);
+            doc.setLineWidth(1.2);
+            doc.rect(sx, sy, bw, bh);
+            doc.setLineWidth(0.6);
+            for (let i = 0; i < nLv; i++) {
+              const y0 = sy + i * hSeg;
+              const ySlab = y0 + hSeg;
+              const q = qs[i] || 0;
+              const alen = 10 + (q / maxQ) * 30;
+              const xMid = sx + bw / 2;
+              const yArrowTop = y0 + 5;
+              const yArrowBottom = Math.min(yArrowTop + alen, ySlab - 5);
+              doc.setDrawColor(200, 70, 70);
+              doc.setLineWidth(1.4);
+              doc.line(xMid, yArrowTop, xMid, yArrowBottom);
+              doc.line(xMid - 4, yArrowBottom - 1, xMid, yArrowBottom + 5);
+              doc.line(xMid + 4, yArrowBottom - 1, xMid, yArrowBottom + 5);
+              doc.setDrawColor(55);
+              doc.setLineWidth(1.2);
+              doc.line(sx + 3, ySlab - 1, sx + bw - 3, ySlab - 1);
+            }
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.3);
+            y += bh + 22;
           }
         }
 
@@ -4587,6 +4873,8 @@ const h = React.createElement;
             ? "span-calculator"
             : activeTool === "gridCalculator"
               ? "grid-calculator"
+              : activeTool === "loadCalculator"
+              ? "load-calculator"
               : activeTool === "room"
                 ? "room-program"
                 : activeTool === "parking"
@@ -6878,6 +7166,327 @@ const h = React.createElement;
         ]);
       }
 
+      if (activeTool === "loadCalculator") {
+        const lr = loadResult;
+        const LOAD_BUILDING_USE_IDS = ["residential", "office", "retail", "hospital", "industrial", "education"];
+        const LOAD_FLOOR_SYSTEM_IDS = ["rc_flat", "rc_beam", "steel_composite", "timber"];
+        const LOAD_FACADE_IDS = ["light", "medium", "heavy"];
+
+        const categoryBadgeClass =
+          lr && lr.loadCategory === "light"
+            ? "border border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
+            : lr && lr.loadCategory === "medium"
+              ? "border border-[#2563EB]/45 bg-[#2563EB]/12 text-[#1D4ED8] dark:text-[#93C5FD]"
+              : lr && lr.loadCategory === "heavy"
+                ? "border border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
+                : lr
+                  ? "border border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+                  : "border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-muted)]";
+
+        let diagramEl = null;
+        if (lr) {
+          const nRoof = lr.roofIncluded ? 1 : 0;
+          const nLv = lr.numFloors + nRoof;
+          const qs = [];
+          if (lr.roofIncluded && lr.roofTotalKnM2 != null) qs.push(lr.roofTotalKnM2);
+          for (let i = 0; i < lr.numFloors; i++) qs.push(lr.totalFloorKnM2);
+          const maxQ = Math.max(...qs.map((q) => (Number.isFinite(q) ? q : 0)), 0.01);
+          const vbW = 300;
+          const vbH = 268;
+          const sx = 108;
+          const sy = 32;
+          const bw = 84;
+          const bh = 196;
+          const hSeg = bh / Math.max(nLv, 1);
+          const slabEls = [];
+          const arrowEls = [];
+          for (let i = 0; i < nLv; i++) {
+            const y0 = sy + i * hSeg;
+            const ySlab = y0 + hSeg;
+            const q = qs[i] || 0;
+            const alen = 10 + (q / maxQ) * 38;
+            const xMid = sx + bw / 2;
+            const yTop = y0 + 7;
+            const yBot = Math.min(yTop + alen, ySlab - 9);
+            slabEls.push(
+              h("line", {
+                key: `s${i}`,
+                x1: sx + 5,
+                y1: ySlab - 1,
+                x2: sx + bw - 5,
+                y2: ySlab - 1,
+                stroke: "currentColor",
+                strokeWidth: 3,
+                strokeLinecap: "round",
+              })
+            );
+            arrowEls.push(
+              h("g", { key: `a${i}` }, [
+                h("line", {
+                  x1: xMid,
+                  y1: yTop,
+                  x2: xMid,
+                  y2: yBot,
+                  stroke: "#DC2626",
+                  className: "dark:stroke-red-400",
+                  strokeWidth: 2.4,
+                  strokeLinecap: "round",
+                }),
+                h("path", {
+                  d: `M ${xMid - 5.5} ${yBot - 1} L ${xMid} ${yBot + 7} L ${xMid + 5.5} ${yBot - 1} Z`,
+                  className: "fill-red-600 dark:fill-red-400",
+                }),
+              ])
+            );
+          }
+          diagramEl = h(
+            "svg",
+            {
+              viewBox: `0 0 ${vbW} ${vbH}`,
+              className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
+              "aria-hidden": true,
+            },
+            [
+              h("rect", {
+                x: sx,
+                y: sy,
+                width: bw,
+                height: bh,
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: 2.2,
+                rx: 2,
+              }),
+              ...slabEls,
+              ...arrowEls,
+              h(
+                "text",
+                {
+                  x: sx + bw + 12,
+                  y: sy + bh / 2,
+                  className: "fill-current text-[9px] font-bold max-w-[80px]",
+                  style: { fontFamily: "system-ui, sans-serif" },
+                },
+                t("loadCalc.sectionHint")
+              ),
+            ]
+          );
+        } else {
+          diagramEl = h(
+            "div",
+            {
+              className:
+                "rounded-2xl border border-dashed border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_4%,var(--st-bg))] p-10 text-center text-xs font-semibold text-[var(--st-muted)]",
+            },
+            t("loadCalc.enterValid")
+          );
+        }
+
+        return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
+          h(Card, {
+            title: t("tools.loadCalculator.label"),
+            hint: t("common.inputs"),
+            children: h("div", { className: "space-y-4" }, [
+              h(SectionTitle, {
+                label: t("loadCalc.sectionBuilding"),
+                hint: t("loadCalc.sectionBuildingHint"),
+              }),
+              h(Field, {
+                label: t("loadCalc.numFloors"),
+                children: h(InputBase, {
+                  value: loadNumFloors,
+                  onChange: setLoadNumFloors,
+                  placeholder: "e.g., 4",
+                  type: "number",
+                  step: "1",
+                  min: 1,
+                }),
+              }),
+              h(Field, {
+                label: t("loadCalc.floorAreaM2"),
+                children: h(InputBase, {
+                  value: loadFloorAreaM2,
+                  onChange: setLoadFloorAreaM2,
+                  placeholder: "e.g., 500",
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: t("loadCalc.buildingUse"),
+                children: h(
+                  "select",
+                  {
+                    value: loadBuildingUse,
+                    onChange: (e) => setLoadBuildingUse(e.target.value),
+                    className:
+                      "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
+                  },
+                  LOAD_BUILDING_USE_IDS.map((id) => h("option", { key: id, value: id }, t(`options.loadBuildingUse.${id}`)))
+                ),
+              }),
+              h(Field, {
+                label: t("loadCalc.floorSystem"),
+                children: h(
+                  "select",
+                  {
+                    value: loadFloorSystem,
+                    onChange: (e) => setLoadFloorSystem(e.target.value),
+                    className:
+                      "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
+                  },
+                  LOAD_FLOOR_SYSTEM_IDS.map((id) => h("option", { key: id, value: id }, t(`options.loadFloorSystem.${id}`)))
+                ),
+              }),
+              h(Field, {
+                label: t("loadCalc.facadeType"),
+                children: h(
+                  "select",
+                  {
+                    value: loadFacadeType,
+                    onChange: (e) => setLoadFacadeType(e.target.value),
+                    className:
+                      "w-full h-[52px] rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] px-4 text-sm font-semibold text-[var(--st-fg)] focus:outline-none focus:border-[var(--st-accent)]",
+                  },
+                  LOAD_FACADE_IDS.map((id) => h("option", { key: id, value: id }, t(`options.loadFacadeType.${id}`)))
+                ),
+              }),
+              h(SectionTitle, {
+                label: t("loadCalc.sectionRoof"),
+                hint: t("loadCalc.sectionRoofHint"),
+              }),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(ValueButton, { active: loadIncludeRoof === true, onClick: () => setLoadIncludeRoof(true) }, t("common.yes")),
+                h(ValueButton, { active: loadIncludeRoof === false, onClick: () => setLoadIncludeRoof(false) }, t("common.no")),
+              ]),
+              h(SectionTitle, {
+                label: t("loadCalc.sectionFoundation"),
+                hint: t("loadCalc.sectionFoundationHint"),
+              }),
+              h(Field, {
+                label: t("loadCalc.gridSpacingXm"),
+                hint: t("loadCalc.gridSpacingXmHint"),
+                children: h(InputBase, {
+                  value: loadGridSpacingXm,
+                  onChange: setLoadGridSpacingXm,
+                  placeholder: t("loadCalc.gridSpacingPlaceholder"),
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+              h(Field, {
+                label: t("loadCalc.gridSpacingYm"),
+                hint: t("loadCalc.gridSpacingYmHint"),
+                children: h(InputBase, {
+                  value: loadGridSpacingYm,
+                  onChange: setLoadGridSpacingYm,
+                  placeholder: t("loadCalc.gridSpacingPlaceholder"),
+                  type: "number",
+                  step: "any",
+                  min: 0,
+                }),
+              }),
+            ]),
+          }),
+          h(Card, {
+            title: t("common.results"),
+            hint: t("common.autoCalculate"),
+            tone: "results",
+            children: h("div", { className: "space-y-5" }, [
+              h("div", { className: "space-y-2" }, [
+                h(
+                  "div",
+                  { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)]" },
+                  t("loadCalc.sectionDiagram")
+                ),
+                diagramEl,
+              ]),
+              h("div", { className: "flex flex-wrap gap-2" }, [
+                h(
+                  "div",
+                  {
+                    className: classNames(
+                      "inline-flex items-center h-9 px-4 rounded-full text-[10px] font-extrabold tracking-[.18em] uppercase",
+                      categoryBadgeClass
+                    ),
+                  },
+                  lr ? lr.loadCategoryLabel : "—"
+                ),
+              ]),
+              lr
+                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed space-y-1" }, [
+                    h("div", {}, t("loadCalc.referenceLine")),
+                    h("div", {}, t("loadCalc.roofNote")),
+                  ])
+                : null,
+              h(ValueBlock, {
+                label: t("loadCalc.deadPerFloor"),
+                valueText: lr ? formatLoadKnM2(lr.deadPerFloorKnM2) : "—",
+                unitText: t("loadCalc.unitKnM2"),
+                big: true,
+                decimals: 2,
+              }),
+              h(ValueBlock, {
+                label: t("loadCalc.livePerFloor"),
+                valueText: lr ? formatLoadKnM2(lr.livePerFloorKnM2) : "—",
+                unitText: t("loadCalc.unitKnM2"),
+                big: true,
+                decimals: 2,
+              }),
+              h(ValueBlock, {
+                label: t("loadCalc.totalFloorLoad"),
+                valueText: lr ? formatLoadKnM2(lr.totalFloorKnM2) : "—",
+                unitText: t("loadCalc.unitKnM2"),
+                big: true,
+                decimals: 2,
+              }),
+              h(ValueBlock, {
+                label: t("loadCalc.totalBuildingKn"),
+                valueText: lr ? formatSmartNumber(lr.totalBuildingKn) : "—",
+                unitText: t("loadCalc.unitKn"),
+                big: true,
+              }),
+              h(ValueBlock, {
+                label: t("loadCalc.totalTonnes"),
+                valueText: lr ? formatSmartNumber(lr.tonnes) : "—",
+                unitText: t("loadCalc.unitT"),
+                big: true,
+              }),
+              h(ValueBlock, {
+                label: t("loadCalc.foundationPerColumn"),
+                valueText: lr ? formatSmartNumber(lr.foundationKnPerColumn) : "—",
+                unitText: t("loadCalc.unitKn"),
+                big: true,
+              }),
+              h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: onCopy,
+                    className:
+                      "h-12 rounded-2xl bg-[var(--st-accent)] text-white font-extrabold tracking-wide hover:brightness-110 transition-colors duration-150",
+                  },
+                  t("common.copyAsText")
+                ),
+                h(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setPdfModalOpen(true),
+                    className:
+                      "h-12 rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)] text-[var(--st-fg)] font-extrabold tracking-wide hover:bg-[color-mix(in_srgb,var(--st-fg)_6%,var(--st-bg))] transition-colors duration-150",
+                  },
+                  t("common.exportPdf")
+                ),
+              ]),
+            ]),
+          }),
+        ]);
+      }
+
       return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
         h(Card, {
           title: t("common.inputs"),
@@ -6959,6 +7568,7 @@ const h = React.createElement;
       "ramp",
       "span",
       "gridCalculator",
+      "loadCalculator",
       "siteCoverage",
       "parking",
       "room",
@@ -7197,19 +7807,21 @@ const h = React.createElement;
                       ? t("pdf.spanCross")
                       : activeTool === "gridCalculator"
                         ? t("pdf.gridPlan")
-                        : activeTool === "room"
-                        ? t("pdf.roomTable")
-                        : activeTool === "parking"
-                          ? t("pdf.parkingTop")
-                          : activeTool === "daylight"
-                            ? t("pdf.daylight")
-                            : activeTool === "fireEscape"
-                              ? t("pdf.firePlan")
-                              : activeTool === "uValue"
-                                ? t("pdf.uValueLayers")
-                                : activeTool === "siteCoverage"
-                                  ? t("pdf.sitePlan")
-                                  : t("pdf.default")
+                        : activeTool === "loadCalculator"
+                          ? t("pdf.loadCalc")
+                          : activeTool === "room"
+                            ? t("pdf.roomTable")
+                            : activeTool === "parking"
+                              ? t("pdf.parkingTop")
+                              : activeTool === "daylight"
+                                ? t("pdf.daylight")
+                                : activeTool === "fireEscape"
+                                  ? t("pdf.firePlan")
+                                  : activeTool === "uValue"
+                                    ? t("pdf.uValueLayers")
+                                    : activeTool === "siteCoverage"
+                                      ? t("pdf.sitePlan")
+                                      : t("pdf.default")
                   ),
                 ]),
               ])
