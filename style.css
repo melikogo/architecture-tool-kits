@@ -181,10 +181,10 @@ html:not(.dark) .structura-hero-sheet-layer {
   }
 }
 
-/* Far-right crane (silhouette, slow swing) — inset so full SVG stays visible with overflow:hidden */
+/* Far-right crane (silhouette, slow swing) — ~50px inset so full SVG stays visible with overflow:hidden */
 .structura-hero-edge-crane {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
+  right: calc(50px + env(safe-area-inset-right, 0px));
   bottom: clamp(8%, 12vh, 22%);
   width: min(150px, 18vw);
   z-index: 2;
