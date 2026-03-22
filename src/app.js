@@ -616,129 +616,154 @@ const h = React.createElement;
     ]);
   }
 
-  /** Center hero: CSS 3D wireframe building (rotateY + float); md+ only. */
+  /**
+   * Center hero: isometric office block, stroke-only wireframe (SVG), md+ only.
+   * Wider footprint than height; float animation only (no 3D spin).
+   */
   function LandingHeroWireframe3D() {
-    /** 4 upper floors × 3 windows: [lit, rowVariant] per cell; variants vary column weights in CSS */
-    const frontUpper = [
-      [
-        { lit: true, v: "r1" },
-        { lit: false, v: "r1" },
-        { lit: true, v: "r1" },
-      ],
-      [
-        { lit: false, v: "r2" },
-        { lit: true, v: "r2" },
-        { lit: false, v: "r2" },
-      ],
-      [
-        { lit: true, v: "r3" },
-        { lit: true, v: "r3" },
-        { lit: false, v: "r3" },
-      ],
-      [
-        { lit: false, v: "r4" },
-        { lit: false, v: "r4" },
-        { lit: true, v: "r4" },
-      ],
+    const ns = "http://www.w3.org/2000/svg";
+    const ISO_C = Math.cos(Math.PI / 6);
+    const ISO_S = Math.sin(Math.PI / 6);
+
+    const W = 112;
+    const D = 44;
+    const H = 46;
+    const floors = 5;
+    const fh = H / floors;
+    const parapetInset = 3.2;
+    const s = 1.28;
+    const ox = 42;
+    const oy = 128;
+
+    const iso = (x, y, z) => ({
+      x: ox + (x - y) * ISO_C * s,
+      y: oy + (x + y) * ISO_S * s - z * s,
+    });
+
+    const seg = (a, b, cls, key) =>
+      h("line", {
+        key,
+        className: cls,
+        x1: a.x,
+        y1: a.y,
+        x2: b.x,
+        y2: b.y,
+        fill: "none",
+      });
+
+    const rectYO = (x0, x1, z0, z1, cls, keyBase) => {
+      const p00 = iso(x0, 0, z0);
+      const p10 = iso(x1, 0, z0);
+      const p11 = iso(x1, 0, z1);
+      const p01 = iso(x0, 0, z1);
+      return [
+        seg(p00, p10, cls, `${keyBase}-b`),
+        seg(p10, p11, cls, `${keyBase}-r`),
+        seg(p11, p01, cls, `${keyBase}-t`),
+        seg(p01, p00, cls, `${keyBase}-l`),
+      ];
+    };
+
+    let k = 0;
+    const nextKey = () => `iso-${k++}`;
+    const wall = "structura-iso-wall";
+    const slab = "structura-iso-slab";
+    const opening = "structura-iso-opening";
+
+    const b0 = [
+      iso(0, 0, 0),
+      iso(W, 0, 0),
+      iso(W, D, 0),
+      iso(0, D, 0),
     ];
-    const backRows = [
-      [
-        { lit: false, v: "b1" },
-        { lit: true, v: "b1" },
-        { lit: false, v: "b1" },
-      ],
-      [
-        { lit: true, v: "b2" },
-        { lit: false, v: "b2" },
-        { lit: true, v: "b2" },
-      ],
-      [
-        { lit: false, v: "b3" },
-        { lit: false, v: "b3" },
-        { lit: true, v: "b3" },
-      ],
-      [
-        { lit: true, v: "b4" },
-        { lit: false, v: "b4" },
-        { lit: false, v: "b4" },
-      ],
-      [
-        { lit: true, v: "b5" },
-        { lit: false, v: "b5" },
-        { lit: true, v: "b5" },
-      ],
+    const b1 = [
+      iso(0, 0, H),
+      iso(W, 0, H),
+      iso(W, D, H),
+      iso(0, D, H),
     ];
 
-    const winClass = (lit) => (lit ? "structura-wire-win structura-wire-win--lit" : "structura-wire-win structura-wire-win--dark");
+    const children = [];
 
-    const frontFacade = h("div", { className: "structura-wire-facade" }, [
-      h("div", { className: "structura-wire-roofline", "aria-hidden": true }),
-      h(
-        "div",
-        { className: "structura-wire-floors" },
-        [
-          ...frontUpper.map((row, r) =>
-            h(
-              "div",
-              {
-                key: `wfr-${r}`,
-                className: `structura-wire-floor-row structura-wire-floor-row--${row[0].v}`,
-              },
-              row.map((cell, c) =>
-                h("span", {
-                  key: `wf-${r}-${c}`,
-                  className: `${winClass(cell.lit)} structura-wire-win--v${(c + r) % 3}`,
-                })
-              )
-            )
-          ),
-          h("div", { className: "structura-wire-floor-row structura-wire-floor-row--ground" }, [
-            h("span", { key: "wg-l", className: `${winClass(false)} structura-wire-win--flank structura-wire-win--v0` }),
-            h("div", { key: "wg-d", className: "structura-wire-door", "aria-hidden": true }),
-            h("span", { key: "wg-r", className: `${winClass(true)} structura-wire-win--flank structura-wire-win--v1` }),
-          ]),
-        ]
-      ),
-    ]);
+    children.push(seg(b0[0], b0[1], wall, nextKey()), seg(b0[1], b0[2], wall, nextKey()), seg(b0[2], b0[3], wall, nextKey()), seg(b0[3], b0[0], wall, nextKey()));
+    children.push(seg(b1[0], b1[1], wall, nextKey()), seg(b1[1], b1[2], wall, nextKey()), seg(b1[2], b1[3], wall, nextKey()), seg(b1[3], b1[0], wall, nextKey()));
+    children.push(seg(b0[0], b1[0], wall, nextKey()), seg(b0[1], b1[1], wall, nextKey()), seg(b0[2], b1[2], wall, nextKey()), seg(b0[3], b1[3], wall, nextKey()));
 
-    const backFacade = h("div", { className: "structura-wire-facade structura-wire-facade--back" }, [
-      h("div", { className: "structura-wire-roofline", "aria-hidden": true }),
-      h(
-        "div",
-        { className: "structura-wire-floors" },
-        backRows.map((row, r) =>
-          h(
-            "div",
-            {
-              key: `wbr-${r}`,
-              className: `structura-wire-floor-row structura-wire-floor-row--${row[0].v}`,
-            },
-            row.map((cell, c) =>
-              h("span", {
-                key: `wb-${r}-${c}`,
-                className: `${winClass(cell.lit)} structura-wire-win--v${(c + r + 1) % 3}`,
-              })
-            )
-          )
-        )
-      ),
-    ]);
+    for (let i = 1; i < floors; i += 1) {
+      const z = i * fh;
+      children.push(seg(iso(0, 0, z), iso(W, 0, z), slab, nextKey()));
+      children.push(seg(iso(W, 0, z), iso(W, D, z), slab, nextKey()));
+    }
+
+    const padX = 10;
+    const padZBand = fh * 0.2;
+    const gap = 6;
+    const innerW = W - 2 * padX;
+    const winW = (innerW - 2 * gap) / 3;
+
+    for (let f = 1; f < floors; f += 1) {
+      const zLo = f * fh + padZBand;
+      const zHi = (f + 1) * fh - padZBand;
+      if (zHi <= zLo + 2) continue;
+      for (let j = 0; j < 3; j += 1) {
+        const x0 = padX + j * (winW + gap);
+        const x1 = x0 + winW;
+        children.push(...rectYO(x0, x1, zLo, zHi, opening, `w-${f}-${j}`));
+      }
+    }
+
+    const doorW = 42;
+    const dzG = 2.5;
+    const xDoor0 = W / 2 - doorW / 2;
+    const xDoor1 = W / 2 + doorW / 2;
+    children.push(...rectYO(xDoor0, xDoor1, dzG, fh - dzG, opening, "door"));
+
+    const pi = parapetInset;
+    const pOuter = [iso(0, 0, H), iso(W, 0, H), iso(W, D, H), iso(0, D, H)];
+    const pInner = [iso(pi, pi, H), iso(W - pi, pi, H), iso(W - pi, D - pi, H), iso(pi, D - pi, H)];
+    for (let i = 0; i < 4; i += 1) {
+      const j = (i + 1) % 4;
+      children.push(seg(pInner[i], pInner[j], wall, nextKey()));
+    }
+    children.push(seg(pOuter[0], pInner[0], wall, nextKey()));
+    children.push(seg(pOuter[1], pInner[1], wall, nextKey()));
+    children.push(seg(pOuter[2], pInner[2], wall, nextKey()));
+    children.push(seg(pOuter[3], pInner[3], wall, nextKey()));
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const bump = (p) => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    };
+    [b0, b1, pInner].flat().forEach(bump);
+    for (let f = 1; f < floors; f += 1) {
+      bump(iso(0, 0, f * fh));
+      bump(iso(W, D, f * fh));
+    }
+    const pad = 14;
+    const vbW = maxX - minX + pad * 2;
+    const vbH = maxY - minY + pad * 2;
+    const viewBox = `${(minX - pad).toFixed(2)} ${(minY - pad).toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`;
 
     return h("div", { className: "structura-hero-wireframe-slot", "aria-hidden": true }, [
-      h("div", { className: "structura-hero-wireframe-perspective" }, [
+      h("div", { className: "structura-hero-wireframe-wrap" }, [
         h("div", { className: "structura-hero-wireframe-float" }, [
-          h("div", { className: "structura-hero-wireframe-spin" }, [
-            h("div", { className: "structura-wire-building" }, [
-              h("div", { className: "structura-wire-face structura-wire-face--front" }, h("div", { className: "structura-wire-face-inner" }, [frontFacade])),
-              h("div", { className: "structura-wire-face structura-wire-face--back" }, h("div", { className: "structura-wire-face-inner" }, [backFacade])),
-              h("div", { className: "structura-wire-face structura-wire-face--right structura-wire-face--side" }),
-              h("div", { className: "structura-wire-face structura-wire-face--left structura-wire-face--side" }),
-              h("div", { className: "structura-wire-face structura-wire-face--top" }, [
-                h("div", { className: "structura-wire-parapet", "aria-hidden": true }),
-              ]),
-              h("div", { className: "structura-wire-face structura-wire-face--bottom" }),
-            ]),
-          ]),
+          h(
+            "svg",
+            {
+              className: "structura-iso-svg",
+              xmlns: ns,
+              viewBox,
+              fill: "none",
+              focusable: "false",
+            },
+            h("g", { className: "structura-iso-building" }, ...children)
+          ),
         ]),
       ]),
     ]);

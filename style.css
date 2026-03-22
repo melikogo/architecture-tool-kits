@@ -434,27 +434,22 @@ html.dark .structura-hero-construction-building {
   }
 }
 
-.structura-hero-wireframe-perspective {
-  width: 220px;
-  height: 300px;
+.structura-hero-wireframe-wrap {
+  width: 100%;
+  max-width: 220px;
+  max-height: 180px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-perspective: 960px;
-  perspective: 960px;
-  -webkit-perspective-origin: 50% 42%;
-  perspective-origin: 50% 42%;
 }
 
 .structura-hero-wireframe-float {
-  transform-style: preserve-3d;
   animation: structura-wireframe-float 3s ease-in-out infinite;
-}
-
-.structura-hero-wireframe-spin {
-  transform-style: preserve-3d;
-  animation: structura-wireframe-spin 12s linear infinite;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes structura-wireframe-float {
@@ -467,254 +462,43 @@ html.dark .structura-hero-construction-building {
   }
 }
 
-@keyframes structura-wireframe-spin {
-  from {
-    transform: rotateY(0deg);
-  }
-  to {
-    transform: rotateY(360deg);
-  }
-}
-
-.structura-wire-building {
-  /* Wall / structure: 15% opacity */
-  --structura-wire-line: rgba(255, 255, 255, 0.15);
-  /* Windows: lit 20%, dark 8% */
-  --structura-wire-lit: rgba(255, 255, 255, 0.2);
-  --structura-wire-lit-border: rgba(255, 255, 255, 0.2);
-  --structura-wire-dark: rgba(255, 255, 255, 0.08);
-  --structura-wire-dark-border: rgba(255, 255, 255, 0.08);
-  width: 200px;
-  height: 280px;
-  position: relative;
-  transform-style: preserve-3d;
-  margin: 0 auto;
-}
-
-html:not(.dark) .structura-wire-building {
-  --structura-wire-line: rgba(15, 23, 42, 0.15);
-  --structura-wire-lit: rgba(15, 23, 42, 0.2);
-  --structura-wire-lit-border: rgba(15, 23, 42, 0.2);
-  --structura-wire-dark: rgba(15, 23, 42, 0.08);
-  --structura-wire-dark-border: rgba(15, 23, 42, 0.08);
-}
-
-.structura-wire-face {
-  position: absolute;
-  box-sizing: border-box;
-  left: 0;
-  top: 0;
-  transform-style: preserve-3d;
-  backface-visibility: visible;
-  border: 2px solid var(--structura-wire-line);
-  background: transparent;
-}
-
-.structura-wire-face--front {
-  width: 200px;
-  height: 280px;
-  transform: rotateY(0deg) translateZ(32px);
-}
-
-.structura-wire-face--back {
-  width: 200px;
-  height: 280px;
-  transform: rotateY(180deg) translateZ(32px);
-}
-
-.structura-wire-face--right {
-  width: 64px;
-  height: 280px;
-  left: 68px;
-  transform: rotateY(90deg) translateZ(100px);
-}
-
-.structura-wire-face--left {
-  width: 64px;
-  height: 280px;
-  left: 68px;
-  transform: rotateY(-90deg) translateZ(100px);
-}
-
-.structura-wire-face--top {
-  width: 200px;
-  height: 64px;
-  top: 108px;
-  left: 0;
-  transform: rotateX(90deg) translateZ(140px);
-}
-
-.structura-wire-face--bottom {
-  width: 200px;
-  height: 64px;
-  top: 108px;
-  left: 0;
-  transform: rotateX(-90deg) translateZ(140px);
-}
-
-.structura-wire-face--side {
-  /* ~3 vertical bays, 2px mullion strokes */
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent 19px,
-    var(--structura-wire-line) 19px,
-    var(--structura-wire-line) 21px
-  );
-  background-origin: border-box;
-}
-
-.structura-wire-face-inner {
-  position: absolute;
-  inset: 10px 11px 12px 11px;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.structura-wire-facade {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  gap: 5px;
-}
-
-.structura-wire-facade--back .structura-wire-floors {
-  gap: 7px;
-}
-
-/* Solid roofline cap (2px) under parapet plane */
-.structura-wire-roofline {
-  flex-shrink: 0;
-  height: 2px;
+/* Isometric SVG: stroke-only, 18% white (dark ink in light mode) */
+.structura-iso-svg {
   width: 100%;
-  background: var(--structura-wire-line);
-  border-radius: 0;
+  height: auto;
+  max-height: 180px;
+  display: block;
+  overflow: visible;
 }
 
-.structura-wire-floors {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-height: 0;
+.structura-iso-building {
+  color: rgba(255, 255, 255, 0.18);
 }
 
-.structura-wire-floor-row {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 5px 7px;
-  min-height: 0;
-  align-items: stretch;
+html:not(.dark) .structura-iso-building {
+  color: rgba(15, 23, 42, 0.18);
 }
 
-/* Varied column weights per floor — breaks uniform grid */
-.structura-wire-floor-row--r1 {
-  grid-template-columns: 1.12fr 0.82fr 1.06fr;
-}
-.structura-wire-floor-row--r2 {
-  grid-template-columns: 0.86fr 1.18fr 0.92fr;
-}
-.structura-wire-floor-row--r3 {
-  grid-template-columns: 1.02fr 0.9fr 1.1fr;
-}
-.structura-wire-floor-row--r4 {
-  grid-template-columns: 0.94fr 1.08fr 0.88fr;
+.structura-iso-wall,
+.structura-iso-slab,
+.structura-iso-opening {
+  stroke: currentColor;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 
-.structura-wire-floor-row--b1 {
-  grid-template-columns: 0.9fr 1.05fr 0.95fr;
-}
-.structura-wire-floor-row--b2 {
-  grid-template-columns: 1.1fr 0.88fr 1.04fr;
-}
-.structura-wire-floor-row--b3 {
-  grid-template-columns: 0.84fr 1.12fr 0.9fr;
-}
-.structura-wire-floor-row--b4 {
-  grid-template-columns: 1.06fr 0.92fr 1fr;
-}
-.structura-wire-floor-row--b5 {
-  grid-template-columns: 0.96fr 1fr 1.04fr;
+.structura-iso-wall {
+  stroke-width: 2.5px;
 }
 
-.structura-wire-floor-row--ground {
-  grid-template-columns: 1fr minmax(28px, 20%) 1fr;
-  align-items: end;
-  flex: 1.12;
-  padding-top: 3px;
-  gap: 4px 6px;
+.structura-iso-slab {
+  stroke-width: 1px;
 }
 
-.structura-wire-door {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 36px;
-  height: 82%;
-  min-height: 38px;
-  border: 2px solid var(--structura-wire-line);
-  border-radius: 1px 1px 0 0;
-  background: transparent;
-  justify-self: center;
-  align-self: end;
-}
-
-/* Window strokes 0.5px; walls stay 2px on .structura-wire-face */
-.structura-wire-win {
-  box-sizing: border-box;
-  border: 0.5px solid var(--structura-wire-dark-border);
-  min-height: 4px;
-  align-self: center;
-  justify-self: stretch;
-}
-
-.structura-wire-win--lit {
-  background: var(--structura-wire-lit);
-  border-color: var(--structura-wire-lit-border);
-}
-
-.structura-wire-win--dark {
-  background: var(--structura-wire-dark);
-  border-color: var(--structura-wire-dark-border);
-}
-
-/* Slight per-cell size variation */
-.structura-wire-win--v0 {
-  max-height: 94%;
-  min-height: 70%;
-  width: 100%;
-}
-
-.structura-wire-win--v1 {
-  max-height: 88%;
-  min-height: 74%;
-  width: 92%;
-  justify-self: center;
-}
-
-.structura-wire-win--v2 {
-  max-height: 100%;
-  min-height: 66%;
-  width: 100%;
-}
-
-.structura-wire-win--flank {
-  max-width: 78%;
-  min-height: 52%;
-  max-height: 62%;
-  width: 100%;
-  justify-self: center;
-}
-
-.structura-wire-parapet {
-  position: absolute;
-  inset: 4px;
-  border: 2px solid var(--structura-wire-line);
-  pointer-events: none;
-  box-sizing: border-box;
+.structura-iso-opening {
+  stroke-width: 1px;
 }
 
 /* Far-right crane (silhouette, slow swing) — 20px from hero edge; viewBox includes full jib + swing */
@@ -949,13 +733,8 @@ body {
     transform: none !important;
   }
 
-  .structura-hero-wireframe-float,
-  .structura-hero-wireframe-spin {
+  .structura-hero-wireframe-float {
     animation: none !important;
-  }
-
-  .structura-hero-wireframe-spin {
-    transform: rotateY(24deg);
   }
 
   .structura-hero-edge-crane-jib {
