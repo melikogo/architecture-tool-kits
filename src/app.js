@@ -1335,6 +1335,93 @@ const h = React.createElement;
     );
   }
 
+  function LandingContactSection({ t }) {
+    const contactBtnClass =
+      "inline-flex items-center justify-center gap-2.5 min-h-[52px] px-5 rounded-2xl border-2 border-[#2563EB] text-[#2563EB] dark:text-blue-400 dark:border-blue-400 font-semibold text-sm sm:text-[15px] transition-colors duration-150 hover:bg-[var(--st-accent)] hover:text-white hover:border-[var(--st-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--st-bg)] w-full sm:w-auto sm:min-w-[240px]";
+
+    const envelopeSvg = h(
+      "svg",
+      {
+        className: "shrink-0 w-5 h-5",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        xmlns: "http://www.w3.org/2000/svg",
+        "aria-hidden": true,
+      },
+      h("path", {
+        stroke: "currentColor",
+        strokeWidth: 1.75,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        d: "M4 6h16v12H4V6zm0 0 8 5.5L20 6",
+      })
+    );
+
+    const linkedInSvg = h(
+      "svg",
+      {
+        className: "shrink-0 w-5 h-5",
+        viewBox: "0 0 24 24",
+        fill: "currentColor",
+        "aria-hidden": true,
+      },
+      h("path", {
+        d: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z",
+      })
+    );
+
+    const email = t("landing.contactEmail");
+
+    return h(
+      "section",
+      {
+        id: "structura-contact",
+        "aria-labelledby": "structura-contact-heading",
+        className:
+          "max-w-6xl mx-auto w-full px-4 pt-12 md:pt-16 pb-12 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+      },
+      [
+        h(
+          "h2",
+          {
+            id: "structura-contact-heading",
+            className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight text-center",
+          },
+          t("landing.contactHeading")
+        ),
+        h(
+          "p",
+          { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium text-center max-w-xl mx-auto mb-8" },
+          t("landing.contactSubtext")
+        ),
+        h(
+          "div",
+          { className: "flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center max-w-md sm:max-w-none mx-auto" },
+          [
+            h(
+              "a",
+              {
+                href: `mailto:${email}`,
+                className: contactBtnClass,
+              },
+              [envelopeSvg, email]
+            ),
+            h(
+              "a",
+              {
+                href: "#",
+                className: contactBtnClass,
+                onClick: (e) => e.preventDefault(),
+                "aria-label": t("landing.contactLinkedIn"),
+              },
+              [linkedInSvg, t("landing.contactLinkedIn")]
+            ),
+          ]
+        ),
+      ]
+    );
+  }
+
   function LandingToolIcon({ toolId, category }) {
     const iconColorClass =
       category === "compliance"
@@ -7928,6 +8015,7 @@ const h = React.createElement;
           LandingToolIcon,
           lang,
         }),
+        h(LandingContactSection, { t }),
         h("footer", { className: "mt-auto pt-10 pb-8 text-center px-4 border-t border-[var(--st-border)]" }, [
           h("div", { className: "text-[12px] font-medium text-[var(--st-muted)]" }, t("footer.designedBy")),
           h(

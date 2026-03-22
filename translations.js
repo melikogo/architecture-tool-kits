@@ -23,6 +23,10 @@
           col3Body:
             "Whether you're a first-year architecture student or a licensed engineer, Structura gives you instant answers to the questions you face every day on site and in studio.",
         },
+        contactHeading: "Get in touch",
+        contactSubtext: "Found a bug? Have a suggestion? Want to collaborate?",
+        contactEmail: "melihzdemirr@gmail.com",
+        contactLinkedIn: "LinkedIn",
       },
       nav: {
         tools: "Tools",
@@ -755,6 +759,10 @@
           col3Body:
             "İster birinci sınıf mimarlık öğrencisi olun ister lisanslı bir mühendis, Structura size şantiyede ve stüdyoda her gün karşılaştığınız sorulara anında yanıt verir.",
         },
+        contactHeading: "İletişime geç",
+        contactSubtext: "Hata mı buldunuz? Öneriniz mi var? İş birliği yapmak ister misiniz?",
+        contactEmail: "melihzdemirr@gmail.com",
+        contactLinkedIn: "LinkedIn",
       },
       nav: {
         tools: "Araçlar",
