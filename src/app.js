@@ -157,6 +157,8 @@ const h = React.createElement;
   const LOAD_CALC_ROOF_LIVE_KNM2 = 0.75;
   const LOAD_CALC_DEFAULT_TRIBUTARY_M2 = 25;
 
+  const AUTHOR_LINKEDIN_URL = "https://www.linkedin.com/in/melih-%C3%B6zdemir-2022b5288/";
+
   const FT_TO_M = 0.3048;
   const IN_TO_M = 0.0254;
   const FT2_TO_M2 = FT_TO_M * FT_TO_M;
@@ -1281,6 +1283,16 @@ const h = React.createElement;
     );
   }
 
+  function LinkedInBrandIcon({ className = "shrink-0 w-5 h-5" }) {
+    return h(
+      "svg",
+      { className, viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true },
+      h("path", {
+        d: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z",
+      })
+    );
+  }
+
   /** About columns: ScrollTrigger stagger */
   function LandingAboutSection({ aboutHeading, columnsContent, depsKey }) {
     const sectionRef = useRef(null);
@@ -1356,19 +1368,6 @@ const h = React.createElement;
       })
     );
 
-    const linkedInSvg = h(
-      "svg",
-      {
-        className: "shrink-0 w-5 h-5",
-        viewBox: "0 0 24 24",
-        fill: "currentColor",
-        "aria-hidden": true,
-      },
-      h("path", {
-        d: "M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z",
-      })
-    );
-
     const email = t("landing.contactEmail");
 
     return h(
@@ -1408,12 +1407,13 @@ const h = React.createElement;
             h(
               "a",
               {
-                href: "#",
+                href: AUTHOR_LINKEDIN_URL,
+                target: "_blank",
+                rel: "noopener noreferrer",
                 className: contactBtnClass,
-                onClick: (e) => e.preventDefault(),
                 "aria-label": t("landing.contactLinkedIn"),
               },
-              [linkedInSvg, t("landing.contactLinkedIn")]
+              [h(LinkedInBrandIcon, { className: "shrink-0 w-5 h-5" }), t("landing.contactLinkedIn")]
             ),
           ]
         ),
@@ -7948,41 +7948,67 @@ const h = React.createElement;
     }).filter(Boolean);
 
     if (activeTool === "landing") {
-      const aboutGrid = h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-14" }, [
+      const aboutGrid = h("div", { className: "space-y-0" }, [
+        h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 lg:gap-14" }, [
+          h(
+            "div",
+            {
+              "data-about-col": "1",
+              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+            },
+            [
+              h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col1Label")),
+              h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col1Title")),
+              h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col1Body")),
+            ]
+          ),
+          h(
+            "div",
+            {
+              "data-about-col": "2",
+              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+            },
+            [
+              h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col2Label")),
+              h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col2Title")),
+              h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col2Body")),
+            ]
+          ),
+          h(
+            "div",
+            {
+              "data-about-col": "3",
+              className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+            },
+            [
+              h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col3Label")),
+              h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col3Title")),
+              h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col3Body")),
+            ]
+          ),
+        ]),
         h(
           "div",
           {
-            "data-about-col": "1",
-            className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
+            "data-about-col": "author",
+            className: "pt-10 md:pt-12 border-t border-[var(--st-border)] text-center max-w-lg mx-auto",
           },
           [
-            h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col1Label")),
-            h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col1Title")),
-            h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col1Body")),
-          ]
-        ),
-        h(
-          "div",
-          {
-            "data-about-col": "2",
-            className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
-          },
-          [
-            h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col2Label")),
-            h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col2Title")),
-            h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col2Body")),
-          ]
-        ),
-        h(
-          "div",
-          {
-            "data-about-col": "3",
-            className: "pt-6 md:pt-8 border-t border-[var(--st-border)]",
-          },
-          [
-            h("div", { key: "l", className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.about.col3Label")),
-            h("h3", { key: "h", className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.about.col3Title")),
-            h("p", { key: "p", className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium" }, t("landing.about.col3Body")),
+            h("div", { className: "text-[11px] font-extrabold tracking-[0.22em] text-[var(--st-accent)] mb-3" }, t("landing.aboutAuthorLabel")),
+            h("h3", { className: "font-display text-lg md:text-xl font-bold text-[var(--st-fg)] mb-3 tracking-tight" }, t("landing.aboutAuthorName")),
+            h("p", { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium mb-5" }, t("landing.aboutAuthorBody")),
+            h(
+              "a",
+              {
+                href: AUTHOR_LINKEDIN_URL,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                className:
+                  "inline-flex items-center justify-center gap-2.5 min-h-[48px] px-5 rounded-2xl border-2 border-[#2563EB] text-[#2563EB] dark:text-blue-400 dark:border-blue-400 font-semibold text-sm transition-colors duration-150 hover:bg-[var(--st-accent)] hover:text-white hover:border-[var(--st-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--st-bg)]",
+                "aria-label": t("landing.contactLinkedIn"),
+              },
+              [h(LinkedInBrandIcon, { className: "shrink-0 w-5 h-5" }), t("landing.contactLinkedIn")]
+            ),
           ]
         ),
       ]);
