@@ -489,6 +489,8 @@
         enLine: "EN 17037 (min DF {enDf}% for {room}): ",
         recommendationsTitle: "Recommendations",
         recNone: "No changes required for indicative EN 17037 targets.",
+        standardsReference:
+          "Reference: EN 17037 · IES Daylight Metrics — Results are indicative; formal daylight study required for compliance",
       },
       fire: {
         sprinklered: "sprinklered",
@@ -566,6 +568,8 @@
           "{headroom} m² of GFA capacity remaining before footprint × floors would exceed FAR.",
         maxFloorsHint:
           "At full SCR, FAR allows ≈ {maxF} equal storeys of max footprint (you have {have}).",
+        standardsReference:
+          "Reference: Local zoning regulations apply — FAR and coverage ratios vary by jurisdiction; verify with local planning authority",
       },
       span: {
         memberRc: "{side} × {side} cm (RC column, indicative)",
@@ -640,6 +644,14 @@
         standardsReference:
           "Reference: Eurocode 2 EN 1992 · ACI 318 — Column grid and bay proportions are indicative; verify with structural engineer",
       },
+      roomProgram: {
+        standardsReference:
+          "Reference: Neufert Architects' Data (4th Ed.) · ISO 9836 — Minimum areas are indicative; verify with local building regulations",
+      },
+      parkingCalc: {
+        standardsReference:
+          "Reference: ITE Parking Generation Manual · AS/NZS 2890.1 — Dimensions are indicative; verify with local authority requirements",
+      },
       loadCalc: {
         sectionBuilding: "Building",
         sectionBuildingHint: "Storey count, floor plate area, and occupancy",
@@ -668,7 +680,8 @@
         unitT: "t",
         sectionDiagram: "Building section (loads)",
         sectionHint: "↓ indicative load",
-        referenceLine: "Reference: indicative characteristic values — Eurocode EN 1991 (verify nationally).",
+        referenceLine:
+          "Reference: indicative characteristic values — Eurocode EN 1991 (verify nationally) · ASCE 7 (USA) — Load values are indicative; structural engineer verification required",
         roofNote:
           "Roof (when included): dead 2.00 kN/m² + live 0.75 kN/m² indicative (e.g. inaccessible roof category — confirm for your project).",
         enterValid: "Enter at least one floor and a positive floor area (m²).",
@@ -706,7 +719,8 @@
         improvement: "Improvement",
         improvementBody:
           "Reduce U-value by at least {du} W/m²K to meet indicative max U ({umax} W/m²K).",
-        referenceBlurb: "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.",
+        referenceBlurb:
+          "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally · ISO 6946 — U-values are indicative; verify with certified energy assessor",
       },
       ramp: {
         access: {
@@ -1206,6 +1220,8 @@
         enLine: "EN 17037 (min DF {enDf}%, {room}): ",
         recommendationsTitle: "Öneriler",
         recNone: "Gösterge EN 17037 hedefleri için değişiklik gerekmez.",
+        standardsReference:
+          "Referans: EN 17037 · IES günışığı metrikleri — Sonuçlar gösterge niteliğindedir; uyumluluk için resmi günışığı çalışması gerekir",
       },
       fire: {
         sprinklered: "sprinklerli",
@@ -1283,6 +1299,8 @@
           "Oturum × kat, KAKS’ı aşmadan önce {headroom} m² TAB kapasitesi kaldı.",
         maxFloorsHint:
           "Tam TAKS’te KAKS, maks. oturum için ≈ {maxF} eşit kat izin veriyor (sizde {have}).",
+        standardsReference:
+          "Referans: Yerel imar düzenlemeleri geçerlidir — KAKS ve TAKS oranları yargı bölgesine göre değişir; yerel planlama otoritesiyle doğrulayın",
       },
       span: {
         memberRc: "{side} × {side} cm (RC kolon, gösterge)",
@@ -1357,6 +1375,14 @@
         standardsReference:
           "Referans: Eurocode 2 EN 1992 · ACI 318 — Kolon ızgarası ve açıklık oranları gösterge niteliğindedir; statik mühendisle doğrulayın",
       },
+      roomProgram: {
+        standardsReference:
+          "Referans: Neufert Architects' Data (4. baskı) · ISO 9836 — Minimum alanlar gösterge niteliğindedir; yerel yönetmeliklerle doğrulayın",
+      },
+      parkingCalc: {
+        standardsReference:
+          "Referans: ITE Parking Generation Manual · AS/NZS 2890.1 — Boyutlar gösterge niteliğindedir; yerel merci gereksinimleriyle doğrulayın",
+      },
       loadCalc: {
         sectionBuilding: "Bina",
         sectionBuildingHint: "Kat adedi, taban alanı ve kullanım",
@@ -1385,7 +1411,8 @@
         unitT: "t",
         sectionDiagram: "Bina kesiti (yükler)",
         sectionHint: "↓ gösterge yük",
-        referenceLine: "Referans: gösterge karakteristik değerler — Eurocode EN 1991 (ulusal olarak doğrulayın).",
+        referenceLine:
+          "Referans: gösterge karakteristik değerler — Eurocode EN 1991 (ulusal olarak doğrulayın) · ASCE 7 (ABD) — Yük değerleri gösterge niteliğindedir; statik mühendis doğrulaması gerekir",
         roofNote:
           "Çatı (dahil edildiğinde): sabit 2,00 kN/m² + hareketli 0,75 kN/m² gösterge (ör. ulaşılamayan çatı — projeye göre doğrulayın).",
         enterValid: "En az bir kat ve pozitif kat alanı (m²) girin.",
@@ -1423,7 +1450,8 @@
         improvement: "İyileştirme",
         improvementBody:
           "Gösterge maks. U ({umax} W/m²K) için U-değerini en az {du} W/m²K düşürün.",
-        referenceBlurb: "Referans: ASHRAE 90.1 ve AB EPBD tarzı limitler — ulusal olarak doğrulayın.",
+        referenceBlurb:
+          "Referans: ASHRAE 90.1 ve AB EPBD tarzı limitler — ulusal olarak doğrulayın · ISO 6946 — U-değerleri gösterge niteliğindedir; sertifikalı enerji değerlendiricisiyle doğrulayın",
       },
       ramp: {
         access: {

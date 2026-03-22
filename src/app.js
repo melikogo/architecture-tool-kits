@@ -5096,6 +5096,14 @@ const h = React.createElement;
                 ),
                 h("div", { className: "text-2xl font-black text-[var(--st-fg)]" }, `${formatSmartNumber(roomProgramTotal)} m²`),
               ]),
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("roomProgram.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2" }, [
                 h(
                   "button",
@@ -5298,6 +5306,14 @@ const h = React.createElement;
                     pr.rampRequired ? t("common.rampRequiredYes") : t("common.rampRequiredNo"),
                   ])
                 : null,
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("parkingCalc.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
@@ -5537,6 +5553,14 @@ const h = React.createElement;
                     ),
                   ])
                 : null,
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("daylight.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
@@ -6031,9 +6055,14 @@ const h = React.createElement;
                     ti("uValue.improvementBody", { du: formatUValue(ur.improvementWm2K), umax: formatUValue(ur.uMax) }),
                   ])
                 : null,
-              ur
-                ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)]" }, t("uValue.referenceBlurb"))
-                : null,
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("uValue.referenceBlurb")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
@@ -6369,6 +6398,14 @@ const h = React.createElement;
                       : null,
                   ])
                 : null,
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("site.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
@@ -7585,7 +7622,6 @@ const h = React.createElement;
               ]),
               lr
                 ? h("div", { className: "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed space-y-1" }, [
-                    h("div", {}, t("loadCalc.referenceLine")),
                     h("div", {}, t("loadCalc.roofNote")),
                   ])
                 : null,
@@ -7628,6 +7664,14 @@ const h = React.createElement;
                 unitText: t("loadCalc.unitKn"),
                 big: true,
               }),
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("loadCalc.referenceLine")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
