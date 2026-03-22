@@ -1023,7 +1023,7 @@ const h = React.createElement;
                 "h1",
                 {
                   className:
-                    "font-display text-[48px] md:text-[64px] lg:text-[96px] font-extrabold tracking-tight leading-[1.02] text-[var(--st-fg)]",
+                    "font-display uppercase whitespace-nowrap text-[48px] md:text-[64px] lg:text-[80px] font-extrabold tracking-tight leading-[1.02] text-[var(--st-fg)]",
                 },
                 titleSpans
               ),
