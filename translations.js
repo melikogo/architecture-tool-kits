@@ -603,6 +603,8 @@
         estimatedDepth: "Estimated slab / beam depth",
         memberSuggestionTitle: "Column / profile suggestion",
         ldRatio: "Span-to-depth ratio (rule used)",
+        standardsReference:
+          "Reference: ACI 318 (USA) · Eurocode 2 EN 1992 (EU) — Span-to-depth ratios are indicative; verify with structural engineer",
       },
       gridCalc: {
         sectionFootprint: "Building footprint",
@@ -1316,6 +1318,8 @@
         estimatedDepth: "Tahmini döşeme / kiriş derinliği",
         memberSuggestionTitle: "Kolon / kesit önerisi",
         ldRatio: "Açıklık/derinlik oranı (kullanılan kural)",
+        standardsReference:
+          "Referans: ACI 318 (ABD) · Eurocode 2 EN 1992 (AB) — Açıklık/derinlik oranları gösterge niteliğindedir; statik mühendisle doğrulayın",
       },
       gridCalc: {
         sectionFootprint: "Bina oturumu",

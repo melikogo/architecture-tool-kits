@@ -4664,24 +4664,33 @@ const h = React.createElement;
             const sx = marginX;
             const sy = y;
             const spanW = 230;
-            const memH = 22;
-            const supW = 12;
+            const memH = 34;
+            const supW = 18;
             const supH = 36;
-            doc.setDrawColor(80);
-            doc.setFillColor(228, 228, 231);
-            doc.rect(sx, sy, spanW, memH, "FD");
-            doc.setFillColor(212, 212, 216);
+            const conc = [82, 82, 91];
+            const concStroke = [39, 39, 42];
+            doc.setDrawColor(concStroke[0], concStroke[1], concStroke[2]);
+            doc.setFillColor(conc[0], conc[1], conc[2]);
             doc.rect(sx, sy + memH, supW, supH, "FD");
             doc.rect(sx + spanW - supW, sy + memH, supW, supH, "FD");
+            doc.rect(sx + supW, sy, spanW - 2 * supW, memH, "FD");
             doc.setFontSize(8);
             doc.setTextColor(60);
-            doc.text(`Span ${formatSmartNumber(spanResult.spanM)} m (clear)`, sx + spanW / 2 - 30, sy - 4);
-            doc.text(`Depth ≈ ${formatSmartNumber(spanResult.depthCm)} cm`, sx + spanW + 14, sy + memH / 2 + 3);
-            doc.setDrawColor(120);
-            doc.line(sx, sy + memH + supH + 6, sx + spanW, sy + memH + supH + 6);
-            doc.line(sx, sy + memH + supH + 2, sx, sy + memH + supH + 10);
-            doc.line(sx + spanW, sy + memH + supH + 2, sx + spanW, sy + memH + supH + 10);
+            doc.text(`Span ${formatSmartNumber(spanResult.spanM)} m`, sx + spanW / 2 - 22, sy + memH + supH + 14);
+            doc.setDrawColor(100);
+            doc.setLineWidth(0.35);
+            doc.line(sx + supW, sy + memH + supH + 4, sx + spanW - supW, sy + memH + supH + 4);
+            doc.line(sx + supW, sy + memH + supH + 1, sx + supW, sy + memH + supH + 7);
+            doc.line(sx + spanW - supW, sy + memH + supH + 1, sx + spanW - supW, sy + memH + supH + 7);
+            const dimX = sx - 6;
+            doc.line(dimX, sy, dimX, sy + memH);
+            doc.line(sx + supW - 2, sy, dimX, sy);
+            doc.line(sx + supW - 2, sy + memH, dimX, sy + memH);
+            doc.text(`d = ${formatSmartNumber(spanResult.depthCm)} cm`, dimX - 2, sy + memH / 2 + 2, { angle: 90 });
             doc.setTextColor(0);
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.2);
+            y += memH + supH + 28;
           }
         }
 
@@ -6412,62 +6421,142 @@ const h = React.createElement;
           ? h(
               "svg",
               {
-                viewBox: "0 0 440 152",
-                className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
+                viewBox: "0 0 384 208",
+                className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_3%,var(--st-bg))] text-[var(--st-fg)]",
                 "aria-hidden": true,
               },
               [
+                // Ground / datum (technical drawing)
+                h("line", {
+                  x1: 72,
+                  y1: 162,
+                  x2: 352,
+                  y2: 162,
+                  stroke: "currentColor",
+                  strokeWidth: 0.85,
+                  opacity: 0.22,
+                }),
+                // Column supports (30×60 px), same concrete fill as slab
                 h("rect", {
-                  x: 32,
-                  y: 78,
-                  width: 16,
-                  height: 48,
-                  rx: 2,
-                  className: "fill-zinc-300 dark:fill-zinc-600 stroke-zinc-500 dark:stroke-zinc-400",
-                  strokeWidth: 1,
+                  x: 92,
+                  y: 98,
+                  width: 30,
+                  height: 60,
+                  rx: 1.5,
+                  fill: "#52525b",
+                  stroke: "#27272a",
+                  strokeWidth: 1.25,
                 }),
                 h("rect", {
-                  x: 392,
-                  y: 78,
-                  width: 16,
-                  height: 48,
-                  rx: 2,
-                  className: "fill-zinc-300 dark:fill-zinc-600 stroke-zinc-500 dark:stroke-zinc-400",
-                  strokeWidth: 1,
+                  x: 310,
+                  y: 98,
+                  width: 30,
+                  height: 60,
+                  rx: 1.5,
+                  fill: "#52525b",
+                  stroke: "#27272a",
+                  strokeWidth: 1.25,
                 }),
+                // Beam / slab (thick, on top of columns)
                 h("rect", {
-                  x: 32,
-                  y: 44,
-                  width: 376,
-                  height: 34,
+                  x: 92,
+                  y: 40,
+                  width: 248,
+                  height: 58,
                   rx: 2,
-                  className: "fill-zinc-200/95 dark:fill-zinc-800/95 stroke-zinc-400 dark:stroke-zinc-500",
-                  strokeWidth: 1,
+                  fill: "#52525b",
+                  stroke: "#27272a",
+                  strokeWidth: 1.25,
                 }),
-                h("line", { x1: 32, y1: 134, x2: 408, y2: 134, stroke: "currentColor", strokeWidth: 1, opacity: 0.5 }),
-                h("path", { d: "M 32 130 L 32 138 M 408 130 L 408 138", stroke: "currentColor", strokeWidth: 1 }),
+                // Depth dimension — extension lines
+                h("line", {
+                  x1: 92,
+                  y1: 40,
+                  x2: 66,
+                  y2: 40,
+                  stroke: "currentColor",
+                  strokeWidth: 0.75,
+                  opacity: 0.4,
+                  strokeDasharray: "4 3",
+                }),
+                h("line", {
+                  x1: 92,
+                  y1: 98,
+                  x2: 66,
+                  y2: 98,
+                  stroke: "currentColor",
+                  strokeWidth: 0.75,
+                  opacity: 0.4,
+                  strokeDasharray: "4 3",
+                }),
+                // Depth dimension line (left)
+                h("line", { x1: 54, y1: 40, x2: 54, y2: 98, stroke: "currentColor", strokeWidth: 1.1, opacity: 0.85 }),
+                h("path", {
+                  d: "M 54 40 L 50 46 L 58 46 Z",
+                  fill: "currentColor",
+                  opacity: 0.85,
+                }),
+                h("path", {
+                  d: "M 54 98 L 50 92 L 58 92 Z",
+                  fill: "currentColor",
+                  opacity: 0.85,
+                }),
                 h(
                   "text",
                   {
-                    x: 220,
-                    y: 148,
+                    x: 26,
+                    y: 69,
+                    transform: "rotate(-90 26 69)",
+                    textAnchor: "middle",
+                    dominantBaseline: "middle",
+                    className: "fill-current text-[11px] font-extrabold",
+                    style: { fontFamily: "system-ui, sans-serif" },
+                  },
+                  ti("span.diagramDepth", { v: formatSmartNumber(spanResult.depthCm) })
+                ),
+                // Span dimension — extension lines
+                h("line", {
+                  x1: 92,
+                  y1: 98,
+                  x2: 92,
+                  y2: 168,
+                  stroke: "currentColor",
+                  strokeWidth: 0.75,
+                  opacity: 0.4,
+                  strokeDasharray: "4 3",
+                }),
+                h("line", {
+                  x1: 340,
+                  y1: 98,
+                  x2: 340,
+                  y2: 168,
+                  stroke: "currentColor",
+                  strokeWidth: 0.75,
+                  opacity: 0.4,
+                  strokeDasharray: "4 3",
+                }),
+                h("line", { x1: 92, y1: 176, x2: 340, y2: 176, stroke: "currentColor", strokeWidth: 1.1, opacity: 0.85 }),
+                h("path", {
+                  d: "M 92 176 L 98 172 L 98 180 Z",
+                  fill: "currentColor",
+                  opacity: 0.85,
+                }),
+                h("path", {
+                  d: "M 340 176 L 334 172 L 334 180 Z",
+                  fill: "currentColor",
+                  opacity: 0.85,
+                }),
+                h(
+                  "text",
+                  {
+                    x: 216,
+                    y: 198,
                     textAnchor: "middle",
                     className: "fill-current text-[11px] font-extrabold",
                     style: { fontFamily: "system-ui, sans-serif" },
                   },
                   ti("span.diagramSpan", { v: formatSmartNumber(spanResult.spanM) })
                 ),
-                h(
-                  "text",
-                  {
-                    x: 412,
-                    y: 64,
-                    className: "fill-current text-[10px] font-bold",
-                    style: { fontFamily: "system-ui, sans-serif" },
-                  },
-                  ti("span.diagramDepth", { v: formatSmartNumber(spanResult.depthCm) })
-                ),
-                h("line", { x1: 412, y1: 44, x2: 412, y2: 78, stroke: "currentColor", strokeWidth: 1, strokeDasharray: "3 2", opacity: 0.7 }),
               ]
             )
           : h(
@@ -6584,6 +6673,14 @@ const h = React.createElement;
                 unitText: "L/d",
                 big: false,
               }),
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("span.standardsReference")
+              ),
               h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2" }, [
                 h(
                   "button",
