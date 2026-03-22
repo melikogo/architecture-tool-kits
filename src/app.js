@@ -616,6 +616,64 @@ const h = React.createElement;
     ]);
   }
 
+  /** Center hero: CSS 3D wireframe building (rotateY + float); md+ only. */
+  function LandingHeroWireframe3D() {
+    const litFront = [
+      [1, 0, 1, 0],
+      [0, 1, 0, 1],
+      [1, 1, 0, 0],
+      [0, 0, 1, 1],
+      [1, 0, 0, 1],
+    ];
+    const litBack = [
+      [0, 1, 0, 1],
+      [1, 0, 1, 0],
+      [0, 0, 1, 1],
+      [1, 1, 0, 0],
+      [0, 1, 1, 0],
+    ];
+    const winCells = (pattern, keyPrefix) =>
+      pattern.flatMap((row, r) =>
+        row.map((lit, c) =>
+          h("span", {
+            key: `${keyPrefix}-${r}-${c}`,
+            className: lit ? "structura-wire-win structura-wire-win--lit" : "structura-wire-win structura-wire-win--dark",
+          })
+        )
+      );
+
+    return h("div", { className: "structura-hero-wireframe-slot", "aria-hidden": true }, [
+      h("div", { className: "structura-hero-wireframe-perspective" }, [
+        h("div", { className: "structura-hero-wireframe-float" }, [
+          h("div", { className: "structura-hero-wireframe-spin" }, [
+            h("div", { className: "structura-wire-building" }, [
+              h(
+                "div",
+                { className: "structura-wire-face structura-wire-face--front" },
+                h("div", { className: "structura-wire-face-inner" }, [
+                  h("div", { className: "structura-wire-windows" }, winCells(litFront, "wf")),
+                ])
+              ),
+              h(
+                "div",
+                { className: "structura-wire-face structura-wire-face--back" },
+                h("div", { className: "structura-wire-face-inner" }, [
+                  h("div", { className: "structura-wire-windows" }, winCells(litBack, "wb")),
+                ])
+              ),
+              h("div", { className: "structura-wire-face structura-wire-face--right structura-wire-face--side" }),
+              h("div", { className: "structura-wire-face structura-wire-face--left structura-wire-face--side" }),
+              h("div", { className: "structura-wire-face structura-wire-face--top" }, [
+                h("div", { className: "structura-wire-parapet", "aria-hidden": true }),
+              ]),
+              h("div", { className: "structura-wire-face structura-wire-face--bottom" }),
+            ]),
+          ]),
+        ]),
+      ]),
+    ]);
+  }
+
   /** Left-side sheet graphics: north arrow, dimensions, ruler 0–10, scale label (behind text) */
   function LandingHeroSheetDecor() {
     const ns = "http://www.w3.org/2000/svg";
@@ -6474,6 +6532,7 @@ const h = React.createElement;
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
           h(LandingHeroBackgroundScene, null),
           h(LandingHeroConstructionBuilding, null),
+          h(LandingHeroWireframe3D, null),
           h(LandingHeroSheetDecor, null),
           h(LandingHeroEdgeCrane, null),
           h(LandingHeroBlock, {

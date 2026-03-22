@@ -415,6 +415,192 @@ html.dark .structura-hero-construction-building {
   }
 }
 
+/* —— Center: 3D wireframe building (between title column & floor plan), md+ —— */
+.structura-hero-wireframe-slot {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* Keep clear of nav + title; nudge up slightly for optical center */
+  padding: clamp(72px, 14vh, 120px) max(12px, 4vw) clamp(24px, 6vh, 64px);
+}
+
+@media (min-width: 768px) {
+  .structura-hero-wireframe-slot {
+    display: flex;
+  }
+}
+
+.structura-hero-wireframe-perspective {
+  width: 220px;
+  height: 300px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-perspective: 960px;
+  perspective: 960px;
+  -webkit-perspective-origin: 50% 42%;
+  perspective-origin: 50% 42%;
+}
+
+.structura-hero-wireframe-float {
+  transform-style: preserve-3d;
+  animation: structura-wireframe-float 3s ease-in-out infinite;
+}
+
+.structura-hero-wireframe-spin {
+  transform-style: preserve-3d;
+  animation: structura-wireframe-spin 12s linear infinite;
+}
+
+@keyframes structura-wireframe-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes structura-wireframe-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.structura-wire-building {
+  --structura-wire-line: rgba(255, 255, 255, 0.2);
+  --structura-wire-lit: rgba(255, 255, 255, 0.38);
+  --structura-wire-lit-border: rgba(255, 255, 255, 0.45);
+  --structura-wire-dark: rgba(255, 255, 255, 0.06);
+  --structura-wire-dark-border: rgba(255, 255, 255, 0.12);
+  width: 200px;
+  height: 280px;
+  position: relative;
+  transform-style: preserve-3d;
+  margin: 0 auto;
+}
+
+html:not(.dark) .structura-wire-building {
+  --structura-wire-line: rgba(15, 23, 42, 0.18);
+  --structura-wire-lit: rgba(15, 23, 42, 0.28);
+  --structura-wire-lit-border: rgba(15, 23, 42, 0.34);
+  --structura-wire-dark: rgba(15, 23, 42, 0.04);
+  --structura-wire-dark-border: rgba(15, 23, 42, 0.1);
+}
+
+.structura-wire-face {
+  position: absolute;
+  box-sizing: border-box;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  border: 1px solid var(--structura-wire-line);
+  background: transparent;
+}
+
+.structura-wire-face--front {
+  width: 200px;
+  height: 280px;
+  transform: rotateY(0deg) translateZ(32px);
+}
+
+.structura-wire-face--back {
+  width: 200px;
+  height: 280px;
+  transform: rotateY(180deg) translateZ(32px);
+}
+
+.structura-wire-face--right {
+  width: 64px;
+  height: 280px;
+  left: 68px;
+  transform: rotateY(90deg) translateZ(100px);
+}
+
+.structura-wire-face--left {
+  width: 64px;
+  height: 280px;
+  left: 68px;
+  transform: rotateY(-90deg) translateZ(100px);
+}
+
+.structura-wire-face--top {
+  width: 200px;
+  height: 64px;
+  top: 108px;
+  left: 0;
+  transform: rotateX(90deg) translateZ(140px);
+}
+
+.structura-wire-face--bottom {
+  width: 200px;
+  height: 64px;
+  top: 108px;
+  left: 0;
+  transform: rotateX(-90deg) translateZ(140px);
+}
+
+.structura-wire-face--side {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 15px,
+    var(--structura-wire-line) 15px,
+    var(--structura-wire-line) 16px
+  );
+  background-origin: border-box;
+}
+
+.structura-wire-face-inner {
+  position: absolute;
+  inset: 11px 13px 15px 13px;
+  pointer-events: none;
+}
+
+.structura-wire-windows {
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px 7px;
+  width: 100%;
+  height: 100%;
+}
+
+.structura-wire-win {
+  box-sizing: border-box;
+  border: 1px solid var(--structura-wire-dark-border);
+  min-height: 6px;
+}
+
+.structura-wire-win--lit {
+  background: var(--structura-wire-lit);
+  border-color: var(--structura-wire-lit-border);
+  opacity: 0.95;
+}
+
+.structura-wire-win--dark {
+  background: var(--structura-wire-dark);
+  border-color: var(--structura-wire-dark-border);
+}
+
+.structura-wire-parapet {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--structura-wire-line);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
 /* Far-right crane (silhouette, slow swing) — 20px from hero edge; viewBox includes full jib + swing */
 .structura-hero-edge-crane {
   position: absolute;
@@ -645,6 +831,15 @@ body {
 
   .structura-uc-crane-jib {
     transform: none !important;
+  }
+
+  .structura-hero-wireframe-float,
+  .structura-hero-wireframe-spin {
+    animation: none !important;
+  }
+
+  .structura-hero-wireframe-spin {
+    transform: rotateY(24deg);
   }
 
   .structura-hero-edge-crane-jib {
