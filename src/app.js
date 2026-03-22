@@ -408,7 +408,226 @@ const h = React.createElement;
     ]);
   }
 
-  /** Landing hero: letter stagger, tagline, CTA scale — GSAP timeline */
+  /** Sparse pulsing nodes for hero blueprint grid (positions in viewBox 0 0 1200 700) */
+  const HERO_PULSE_NODES = (() => {
+    const out = [];
+    const delayClasses = [
+      "",
+      "structura-hero-node--d1",
+      "structura-hero-node--d2",
+      "structura-hero-node--d3",
+      "structura-hero-node--d4",
+      "structura-hero-node--d5",
+    ];
+    let i = 0;
+    for (let x = 56; x < 1160; x += 72) {
+      for (let y = 56; y < 640; y += 72) {
+        if (((x / 72) | 0) % 2 !== ((y / 72) | 0) % 2) continue;
+        out.push({ cx: x, cy: y, d: delayClasses[i % delayClasses.length] });
+        i += 1;
+      }
+    }
+    return out;
+  })();
+
+  /** Full-bleed animated SVG: grid, wireframe, crane, nodes, hard hat */
+  function LandingHeroBackgroundScene() {
+    const ns = "http://www.w3.org/2000/svg";
+    return h("div", { className: "structura-hero-scene", "aria-hidden": true }, [
+      h(
+        "svg",
+        {
+          className: "structura-hero-scene-svg",
+          viewBox: "0 0 1200 700",
+          preserveAspectRatio: "xMidYMid slice",
+          xmlns: ns,
+        },
+        [
+          h("defs", null, [
+            h(
+              "pattern",
+              {
+                id: "structura-hero-grid-pat",
+                width: 56,
+                height: 56,
+                patternUnits: "userSpaceOnUse",
+              },
+              h("path", {
+                className: "structura-hero-stroke",
+                d: "M56 0H0V56",
+                strokeWidth: 0.55,
+                opacity: 0.9,
+              })
+            ),
+          ]),
+          h(
+            "g",
+            { className: "structura-hero-grid-drift" },
+            h("rect", {
+              x: -80,
+              y: -80,
+              width: 1360,
+              height: 860,
+              fill: "url(#structura-hero-grid-pat)",
+              opacity: 0.45,
+            })
+          ),
+          /* Building wireframe — right */
+          h(
+            "g",
+            { opacity: 0.14 },
+            h("path", {
+              className: "structura-hero-stroke",
+              strokeWidth: 0.85,
+              strokeLinejoin: "miter",
+              d: "M 760 520 L 760 220 L 820 180 L 980 145 L 1120 175 L 1180 230 L 1180 540 L 1040 560 L 900 548 L 760 520 Z M 820 180 L 820 520 M 980 145 L 980 530 M 1040 200 L 1120 210 L 1120 520 M 800 320 L 1160 300 M 800 400 L 1140 385",
+            })
+          ),
+          /* Construction crane — far right */
+          h(
+            "g",
+            { transform: "translate(1095, 538)", opacity: 0.15 },
+            h("line", {
+              className: "structura-hero-stroke",
+              x1: 0,
+              y1: 0,
+              x2: 0,
+              y2: -228,
+              strokeWidth: 1.15,
+            }),
+            h("rect", {
+              className: "structura-hero-fill",
+              x: -10,
+              y: -6,
+              width: 20,
+              height: 10,
+              rx: 1,
+              opacity: 0.55,
+            }),
+            h(
+              "g",
+              { transform: "translate(0,-228)" },
+              h(
+                "g",
+                { className: "structura-hero-crane-arm" },
+                [
+                  h("line", {
+                    className: "structura-hero-stroke",
+                    x1: 0,
+                    y1: 0,
+                    x2: 142,
+                    y2: -6,
+                    strokeWidth: 1,
+                  }),
+                  h("line", {
+                    className: "structura-hero-stroke",
+                    x1: 0,
+                    y1: 0,
+                    x2: -88,
+                    y2: 32,
+                    strokeWidth: 0.9,
+                  }),
+                  h("line", {
+                    className: "structura-hero-stroke",
+                    x1: 118,
+                    y1: -5,
+                    x2: 118,
+                    y2: 62,
+                    strokeWidth: 0.75,
+                    strokeDasharray: "3 4",
+                    opacity: 0.85,
+                  }),
+                  h("path", {
+                    className: "structura-hero-fill",
+                    d: "M 112 58 L 124 58 L 122 70 L 114 70 Z",
+                    opacity: 0.75,
+                  }),
+                ]
+              )
+            )
+          ),
+          /* Pulsing intersection nodes */
+          ...HERO_PULSE_NODES.map(({ cx, cy, d }, idx) =>
+            h("circle", {
+              key: `n-${idx}`,
+              className: `structura-hero-node ${d}`.trim(),
+              cx,
+              cy,
+              r: 2.2,
+              opacity: 0.85,
+            })
+          ),
+          /* Hard hat — bottom right */
+          h(
+            "g",
+            { transform: "translate(1028, 612) scale(0.72)", opacity: 0.12 },
+            h("path", {
+              className: "structura-hero-stroke",
+              strokeWidth: 1,
+              d: "M 4 28 C 4 12 18 2 36 2 C 54 2 68 12 68 28 L 72 32 L 0 32 Z",
+            }),
+            h("path", {
+              className: "structura-hero-stroke",
+              strokeWidth: 0.75,
+              d: "M 0 32 L 72 32 L 76 36 L -4 36 Z",
+            }),
+            h("line", {
+              className: "structura-hero-stroke",
+              x1: 14,
+              y1: 18,
+              x2: 58,
+              y2: 18,
+              strokeWidth: 0.6,
+              opacity: 0.8,
+            })
+          ),
+        ]
+      ),
+    ]);
+  }
+
+  /** Large faint floor plan for hero right column */
+  function LandingHeroFloorPlanSvg() {
+    const ns = "http://www.w3.org/2000/svg";
+    return h(
+      "svg",
+      {
+        className: "structura-hero-floorplan-svg w-full max-w-[260px] sm:max-w-[300px] md:max-w-[420px] mx-auto md:mx-0 md:ml-auto",
+        viewBox: "0 0 360 300",
+        fill: "none",
+        xmlns: ns,
+        "aria-hidden": true,
+      },
+      h("g", { strokeWidth: 1, strokeLinecap: "square", vectorEffect: "non-scaling-stroke" }, [
+        h("rect", {
+          className: "structura-hero-floor-stroke",
+          x: 8,
+          y: 8,
+          width: 344,
+          height: 284,
+          rx: 2,
+        }),
+        h("path", {
+          className: "structura-hero-floor-stroke",
+          d: "M 120 8 V 292 M 240 8 V 292 M 8 110 H 352 M 8 200 H 352 M 120 110 H 240 M 200 110 V 200",
+        }),
+        h("path", {
+          className: "structura-hero-floor-stroke",
+          strokeDasharray: "4 3",
+          opacity: 0.85,
+          d: "M 8 56 H 352 M 8 246 H 260",
+        }),
+        h("path", {
+          className: "structura-hero-floor-stroke",
+          d: "M 260 200 A 22 22 0 0 1 304 200",
+        }),
+        h("circle", { className: "structura-hero-floor-stroke", cx: 52, cy: 56, r: 4 }),
+        h("circle", { className: "structura-hero-floor-stroke", cx: 310, cy: 246, r: 3.5 }),
+      ])
+    );
+  }
+
+  /** Landing hero: letter stagger, tagline, CTA — GSAP (CTA opacity only; hover scale via CSS inner) */
   function LandingHeroBlock({ navToggles, tagline, openLabel, onOpenToolkit }) {
     const wrapRef = useRef(null);
     useGSAP(
@@ -423,19 +642,19 @@ const h = React.createElement;
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduce) {
           gsap.set(letters, { opacity: 1, y: 0, clearProps: "transform" });
-          gsap.set([taglineEl, ctaEl], { opacity: 1, y: 0, scale: 1, clearProps: "transform" });
+          gsap.set([taglineEl, ctaEl], { opacity: 1, y: 0, clearProps: "transform" });
           return;
         }
 
         gsap.killTweensOf([letters, taglineEl, ctaEl]);
         gsap.set(letters, { opacity: 0, y: 24 });
         gsap.set(taglineEl, { opacity: 0, y: 16 });
-        gsap.set(ctaEl, { opacity: 0, scale: 0.92 });
+        gsap.set(ctaEl, { opacity: 0 });
 
         const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
         tl.to(letters, { opacity: 1, y: 0, duration: 0.45, stagger: 0.03 })
           .to(taglineEl, { opacity: 1, y: 0, duration: 0.45 }, ">")
-          .to(ctaEl, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.4)" }, ">");
+          .to(ctaEl, { opacity: 1, duration: 0.35 }, ">");
       },
       { scope: wrapRef, dependencies: [tagline, openLabel] }
     );
@@ -453,39 +672,53 @@ const h = React.createElement;
       )
     );
 
-    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full px-4 flex flex-col flex-1 min-h-0" }, [
+    return h("div", { ref: wrapRef, className: "relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-6 flex flex-col flex-1 min-h-0" }, [
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
-      h("section", { className: "flex-1 flex flex-col justify-center pb-[60px] min-h-0" }, [
-        h(
-          "h1",
-          {
-            className:
-              "font-display text-[clamp(2.5rem,10vw,4.25rem)] md:text-[72px] font-bold tracking-tight leading-[1.02] text-[var(--st-fg)]",
-          },
-          titleSpans
-        ),
-        h(
-          "p",
-          {
-            "data-hero-tagline": true,
-            className: "mt-5 text-lg md:text-xl text-[var(--st-muted)] font-medium max-w-2xl leading-snug",
-            style: { willChange: "transform, opacity" },
-          },
-          tagline
-        ),
-        h(
-          "button",
-          {
-            "data-hero-cta": true,
-            type: "button",
-            className:
-              "mt-10 h-14 px-8 rounded-2xl bg-[var(--st-accent)] text-white font-semibold text-[15px] tracking-wide hover:brightness-110 transition-all duration-150",
-            style: { willChange: "transform, opacity" },
-            onClick: onOpenToolkit,
-          },
-          openLabel
-        ),
-      ]),
+      h(
+        "section",
+        { className: "flex-1 flex flex-col justify-center pb-[60px] min-h-0 w-full" },
+        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 items-center w-full" }, [
+          h("div", { className: "min-w-0 order-1" }, [
+            h("div", { className: "min-w-0" }, [
+              h(
+                "h1",
+                {
+                  className:
+                    "font-display text-[clamp(2.75rem,12vw,4.5rem)] md:text-[80px] font-bold tracking-tight leading-[1.02] text-[var(--st-fg)]",
+                },
+                titleSpans
+              ),
+              h("div", { className: "structura-hero-title-line", "aria-hidden": true }),
+            ]),
+            h(
+              "p",
+              {
+                "data-hero-tagline": true,
+                className: "mt-6 text-[17px] md:text-[18px] text-[var(--st-muted)] font-normal max-w-xl leading-relaxed",
+                style: { willChange: "transform, opacity" },
+              },
+              tagline
+            ),
+            h(
+              "button",
+              {
+                "data-hero-cta": true,
+                type: "button",
+                className: "structura-hero-cta mt-10 rounded-2xl border-0 cursor-pointer bg-transparent p-0",
+                style: { willChange: "opacity" },
+                onClick: onOpenToolkit,
+              },
+              h("span", { className: "structura-hero-cta-scale" }, [
+                openLabel,
+                h("span", { className: "structura-hero-cta-arrow", "aria-hidden": true }, "→"),
+              ])
+            ),
+          ]),
+          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[180px] md:min-h-[280px]" }, [
+            h(LandingHeroFloorPlanSvg, null),
+          ]),
+        ])
+      ),
     ]);
   }
 
@@ -5536,6 +5769,7 @@ const h = React.createElement;
       return h("div", { className: "min-h-screen flex flex-col bg-[var(--st-bg)] text-[var(--st-fg)]" }, [
         h("div", { className: "structura-hero-shell" }, [
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
+          h(LandingHeroBackgroundScene, null),
           h(LandingHeroBlock, {
             navToggles: h(NavToggles, { theme, onThemeToggle: handleThemeToggle }),
             tagline: t("landing.tagline"),

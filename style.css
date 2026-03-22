@@ -36,16 +36,193 @@ html.dark {
   overflow: hidden;
 }
 
+/* Legacy grid layer (optional depth); hero scene SVG is primary */
 .structura-hero-grid-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.07;
+  opacity: 0.04;
   background-image: var(--structura-hero-grid);
   background-size: 72px 72px;
   background-position: 50% 0;
-  mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+}
+
+/* —— Hero rich background (SVG + CSS only) —— */
+.structura-hero-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  color: rgba(15, 23, 42, 0.12);
+}
+
+html.dark .structura-hero-scene {
+  color: rgba(255, 255, 255, 0.12);
+}
+
+.structura-hero-scene-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.structura-hero-scene-svg .structura-hero-stroke {
+  stroke: currentColor;
+  fill: none;
+}
+
+.structura-hero-scene-svg .structura-hero-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.structura-hero-node {
+  fill: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: structura-node-pulse 2s ease-in-out infinite;
+}
+
+.structura-hero-node--d1 {
+  animation-delay: 0.15s;
+}
+.structura-hero-node--d2 {
+  animation-delay: 0.45s;
+}
+.structura-hero-node--d3 {
+  animation-delay: 0.75s;
+}
+.structura-hero-node--d4 {
+  animation-delay: 1.05s;
+}
+.structura-hero-node--d5 {
+  animation-delay: 1.35s;
+}
+
+@keyframes structura-node-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+.structura-hero-grid-drift {
+  animation: structura-hero-grid-drift 72s linear infinite;
+}
+
+@keyframes structura-hero-grid-drift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(56px, 56px);
+  }
+}
+
+.structura-hero-crane-arm {
+  transform-origin: 0px 0px;
+  transform-box: fill-box;
+  animation: structura-crane-rotate 20s linear infinite;
+}
+
+@keyframes structura-crane-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Floor plan column (right) */
+.structura-hero-floorplan-svg {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  margin-left: auto;
+  opacity: 0.1;
+  color: rgba(15, 23, 42, 0.9);
+}
+
+html.dark .structura-hero-floorplan-svg {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.structura-hero-floorplan-svg .structura-hero-floor-stroke {
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Title underline accent */
+.structura-hero-title-line {
+  height: 2px;
+  width: 60%;
+  max-width: 420px;
+  margin-top: 0.35rem;
+  background: var(--st-accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: structura-title-line-in 1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
+}
+
+@keyframes structura-title-line-in {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* CTA: inner scales on hover; GSAP only tweens opacity on button */
+.structura-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+}
+
+.structura-hero-cta:focus {
+  outline: none;
+}
+
+.structura-hero-cta:focus-visible {
+  outline: 2px solid var(--st-accent);
+  outline-offset: 3px;
+}
+
+.structura-hero-cta-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 14px 32px;
+  border-radius: 1rem;
+  background: var(--st-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  transition: transform 0.22s ease, filter 0.22s ease;
+}
+
+.structura-hero-cta:hover .structura-hero-cta-scale,
+.structura-hero-cta:focus-visible .structura-hero-cta-scale {
+  transform: scale(1.02);
+  filter: brightness(1.12);
+}
+
+.structura-hero-cta-arrow {
+  display: inline-block;
+  transition: transform 0.22s ease;
+}
+
+.structura-hero-cta:hover .structura-hero-cta-arrow,
+.structura-hero-cta:focus-visible .structura-hero-cta-arrow {
+  transform: translateX(5px);
 }
 
 * {
@@ -75,6 +252,29 @@ body {
   [data-about-col] {
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .structura-hero-grid-drift,
+  .structura-hero-crane-arm,
+  .structura-hero-node {
+    animation: none !important;
+  }
+
+  .structura-hero-grid-drift {
+    transform: none !important;
+  }
+
+  .structura-hero-title-line {
+    animation: none !important;
+    transform: scaleX(1) !important;
+  }
+
+  .structura-hero-cta:hover .structura-hero-cta-scale,
+  .structura-hero-cta:focus-visible .structura-hero-cta-scale,
+  .structura-hero-cta:hover .structura-hero-cta-arrow,
+  .structura-hero-cta:focus-visible .structura-hero-cta-arrow {
+    transform: none !important;
+    filter: none !important;
   }
 }
 
