@@ -27,7 +27,6 @@
       })();
     </script>
 
-    <!-- Tailwind (no build step) -->
     <script>
       tailwind.config = {
         darkMode: "class",
@@ -43,18 +42,13 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- React (no build step) -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-
-    <!-- jsPDF (for PDF export) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="/style.css" />
   </head>
-  <body class="antialiased font-sans theme-transition-body bg-[var(--st-bg)] text-[var(--st-fg)]">
+  <body class="antialiased font-sans bg-[var(--st-bg)] text-[var(--st-fg)]">
     <div id="root"></div>
-    <script src="./translations.js"></script>
-    <script src="./script.js"></script>
+    <script src="/translations.js"></script>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>

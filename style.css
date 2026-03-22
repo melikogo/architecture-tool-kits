@@ -59,107 +59,20 @@ body {
   letter-spacing: -0.012em;
 }
 
-/* Full-page theme transition (200ms) */
-.theme-transition-body,
-.theme-transition-body * {
-  transition:
-    background-color 200ms ease,
-    color 200ms ease,
-    border-color 200ms ease,
-    fill 200ms ease,
-    stroke 200ms ease;
-}
-
-/* Hero entrance */
-@keyframes structura-hero-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.structura-hero-line {
-  opacity: 0;
-  animation: structura-hero-in 600ms ease forwards;
-}
-.structura-hero-line--1 {
-  animation-delay: 0ms;
-}
-.structura-hero-line--2 {
-  animation-delay: 100ms;
-}
-.structura-hero-line--3 {
-  animation-delay: 200ms;
-}
-.structura-hero-line--4 {
-  animation-delay: 280ms;
-}
-
-/* Landing tool cards — stagger on load (100ms between cards, 400ms each) */
-@keyframes structura-landing-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Theme color transitions are driven by GSAP (see handleThemeToggle in app). */
 
 .landing-tool-card {
-  opacity: 0;
-  transform: translateY(14px);
-  animation: structura-landing-card-in 400ms ease forwards;
-  animation-fill-mode: forwards;
   transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-tool-card {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-  .structura-hero-line {
-    animation: none !important;
+  .structura-hero-char,
+  [data-hero-tagline],
+  [data-hero-cta],
+  .landing-tool-card,
+  [data-about-col] {
     opacity: 1 !important;
     transform: none !important;
-  }
-}
-
-/* Landing About — fade-in on scroll */
-.structura-about-col {
-  opacity: 0;
-  transform: translateY(18px);
-  transition:
-    opacity 0.6s ease,
-    transform 0.6s ease;
-}
-.structura-about-col[data-about-col="2"] {
-  transition-delay: 90ms;
-}
-.structura-about-col[data-about-col="3"] {
-  transition-delay: 180ms;
-}
-.structura-about-col.structura-about-col--visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .structura-about-col {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .structura-about-col[data-about-col="2"],
-  .structura-about-col[data-about-col="3"] {
-    transition-delay: 0ms;
   }
 }
 
