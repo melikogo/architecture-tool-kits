@@ -995,7 +995,7 @@ const h = React.createElement;
       { scope: wrapRef, dependencies: [tagline, openLabel] }
     );
 
-    const title = "Structura";
+    const title = "STRUCTURA";
     const titleSpans = [...title].map((ch, i) =>
       h(
         "span",
@@ -6158,7 +6158,7 @@ const h = React.createElement;
                     className:
                       "text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--st-accent)] mb-2 hover:brightness-110 transition-colors duration-150 text-left",
                   },
-                  "Structura"
+                  "STRUCTURA"
                 ),
                 h(
                   "h1",
