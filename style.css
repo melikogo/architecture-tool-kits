@@ -33,7 +33,7 @@ html.dark {
   min-height: 60vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* clips background + keeps blueprint / crane inside bounds */
+  overflow: hidden; /* clips scene layers + crane; nothing spills past hero */
 }
 
 /* Mobile: hide blueprint + crane; tighter bottom padding */
@@ -181,10 +181,10 @@ html:not(.dark) .structura-hero-sheet-layer {
   }
 }
 
-/* Far-right crane (silhouette, slow swing) — ~50px inset so full SVG stays visible with overflow:hidden */
+/* Far-right crane (silhouette, slow swing) — 20px from hero edge; viewBox includes full jib + swing */
 .structura-hero-edge-crane {
   position: absolute;
-  right: calc(50px + env(safe-area-inset-right, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
   bottom: clamp(8%, 12vh, 22%);
   width: min(150px, 18vw);
   z-index: 2;

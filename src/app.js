@@ -730,7 +730,8 @@ const h = React.createElement;
         "svg",
         {
           className: "structura-hero-edge-crane-svg",
-          viewBox: "0 0 100 260",
+          /* Jib reaches ~x=122 + ~3px for ±5° swing; was 100-wide and clipped on the right */
+          viewBox: "0 0 132 260",
           xmlns: ns,
         },
         [
