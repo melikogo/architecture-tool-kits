@@ -655,7 +655,7 @@
         unitKn: "kN",
         unitT: "t",
         sectionDiagram: "Building section (loads)",
-        sectionHint: "↓ indicative vertical load per level",
+        sectionHint: "↓ indicative load",
         referenceLine: "Reference: indicative characteristic values — Eurocode EN 1991 (verify nationally).",
         roofNote:
           "Roof (when included): dead 2.00 kN/m² + live 0.75 kN/m² indicative (e.g. inaccessible roof category — confirm for your project).",
@@ -1358,7 +1358,7 @@
         unitKn: "kN",
         unitT: "t",
         sectionDiagram: "Bina kesiti (yükler)",
-        sectionHint: "↓ kat başına gösterge düşey yük",
+        sectionHint: "↓ gösterge yük",
         referenceLine: "Referans: gösterge karakteristik değerler — Eurocode EN 1991 (ulusal olarak doğrulayın).",
         roofNote:
           "Çatı (dahil edildiğinde): sabit 2,00 kN/m² + hareketli 0,75 kN/m² gösterge (ör. ulaşılamayan çatı — projeye göre doğrulayın).",

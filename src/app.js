@@ -7192,11 +7192,11 @@ const h = React.createElement;
           for (let i = 0; i < lr.numFloors; i++) qs.push(lr.totalFloorKnM2);
           const maxQ = Math.max(...qs.map((q) => (Number.isFinite(q) ? q : 0)), 0.01);
           const vbW = 300;
-          const vbH = 268;
-          const sx = 108;
-          const sy = 32;
+          const vbH = 272;
+          const sx = (vbW - 84) / 2;
+          const sy = 28;
           const bw = 84;
-          const bh = 196;
+          const bh = 190;
           const hSeg = bh / Math.max(nLv, 1);
           const slabEls = [];
           const arrowEls = [];
@@ -7243,7 +7243,9 @@ const h = React.createElement;
             "svg",
             {
               viewBox: `0 0 ${vbW} ${vbH}`,
-              className: "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)]",
+              className:
+                "w-full h-auto rounded-2xl border border-[var(--st-border)] bg-[var(--st-bg)]/40 text-[var(--st-fg)] overflow-hidden",
+              style: { overflow: "hidden" },
               "aria-hidden": true,
             },
             [
@@ -7262,9 +7264,10 @@ const h = React.createElement;
               h(
                 "text",
                 {
-                  x: sx + bw + 12,
-                  y: sy + bh / 2,
-                  className: "fill-current text-[9px] font-bold max-w-[80px]",
+                  x: vbW / 2,
+                  y: Math.min(sy + bh + 22, vbH - 6),
+                  textAnchor: "middle",
+                  className: "fill-current text-[9px] font-bold",
                   style: { fontFamily: "system-ui, sans-serif" },
                 },
                 t("loadCalc.sectionHint")
