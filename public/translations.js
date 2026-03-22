@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Structura — EN / TR UI strings (loaded before script.js)
  */
 (function () {
@@ -764,7 +764,7 @@
         contactHeading: "İletişime geç",
         contactSubtext: "Hata mı buldunuz? Öneriniz mi var? İş birliği yapmak ister misiniz?",
         contactTagline:
-          "Structura’yı mimarlar ve mühendisler için tasarlayıp geliştirdi — stüdyodan şantiyeye günlük kontroller için.",
+          "Mimarlar ve mühendisler için tasarlandı — stüdyodan şantiyeye, her hesap için.",
         contactEmail: "melihzdemirr@gmail.com",
         contactLinkedIn: "LinkedIn",
       },
