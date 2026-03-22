@@ -617,153 +617,119 @@ const h = React.createElement;
   }
 
   /**
-   * Center hero: isometric office block, stroke-only wireframe (SVG), md+ only.
-   * Wider footprint than height; float animation only (no 3D spin).
+   * Center hero: straight front elevation, stroke-only SVG; rotateY 12s + float. md+ only.
+   * 6 storeys: ground = door; upper 5 = 3 windows each. 160×260, 18% stroke opacity.
    */
   function LandingHeroWireframe3D() {
     const ns = "http://www.w3.org/2000/svg";
-    const ISO_C = Math.cos(Math.PI / 6);
-    const ISO_S = Math.sin(Math.PI / 6);
+    const W = 160;
+    const H = 260;
+    const floors = 6;
+    const innerTop = 1;
+    const innerLeft = 1;
+    const innerW = W - 2;
+    const innerH = H - 2;
+    const fh = innerH / floors;
+    const ix0 = innerLeft + 2;
+    const ix1 = innerLeft + innerW - 2;
+    const innerFaceW = ix1 - ix0;
+    const gap = 8;
+    const winW = (innerFaceW - 2 * gap) / 3;
+    const padY = 7;
+    const innerBot = innerTop + innerH;
 
-    const W = 112;
-    const D = 44;
-    const H = 46;
-    const floors = 5;
-    const fh = H / floors;
-    const parapetInset = 3.2;
-    const s = 1.28;
-    const ox = 42;
-    const oy = 128;
+    let ki = 0;
+    const key = () => `fe-${ki++}`;
+    const els = [];
 
-    const iso = (x, y, z) => ({
-      x: ox + (x - y) * ISO_C * s,
-      y: oy + (x + y) * ISO_S * s - z * s,
-    });
-
-    const seg = (a, b, cls, key) =>
-      h("line", {
-        key,
-        className: cls,
-        x1: a.x,
-        y1: a.y,
-        x2: b.x,
-        y2: b.y,
+    els.push(
+      h("rect", {
+        key: key(),
+        className: "structura-front-outer",
+        x: innerLeft,
+        y: innerTop,
+        width: innerW,
+        height: innerH,
         fill: "none",
-      });
-
-    const rectYO = (x0, x1, z0, z1, cls, keyBase) => {
-      const p00 = iso(x0, 0, z0);
-      const p10 = iso(x1, 0, z0);
-      const p11 = iso(x1, 0, z1);
-      const p01 = iso(x0, 0, z1);
-      return [
-        seg(p00, p10, cls, `${keyBase}-b`),
-        seg(p10, p11, cls, `${keyBase}-r`),
-        seg(p11, p01, cls, `${keyBase}-t`),
-        seg(p01, p00, cls, `${keyBase}-l`),
-      ];
-    };
-
-    let k = 0;
-    const nextKey = () => `iso-${k++}`;
-    const wall = "structura-iso-wall";
-    const slab = "structura-iso-slab";
-    const opening = "structura-iso-opening";
-
-    const b0 = [
-      iso(0, 0, 0),
-      iso(W, 0, 0),
-      iso(W, D, 0),
-      iso(0, D, 0),
-    ];
-    const b1 = [
-      iso(0, 0, H),
-      iso(W, 0, H),
-      iso(W, D, H),
-      iso(0, D, H),
-    ];
-
-    const children = [];
-
-    children.push(seg(b0[0], b0[1], wall, nextKey()), seg(b0[1], b0[2], wall, nextKey()), seg(b0[2], b0[3], wall, nextKey()), seg(b0[3], b0[0], wall, nextKey()));
-    children.push(seg(b1[0], b1[1], wall, nextKey()), seg(b1[1], b1[2], wall, nextKey()), seg(b1[2], b1[3], wall, nextKey()), seg(b1[3], b1[0], wall, nextKey()));
-    children.push(seg(b0[0], b1[0], wall, nextKey()), seg(b0[1], b1[1], wall, nextKey()), seg(b0[2], b1[2], wall, nextKey()), seg(b0[3], b1[3], wall, nextKey()));
+      })
+    );
 
     for (let i = 1; i < floors; i += 1) {
-      const z = i * fh;
-      children.push(seg(iso(0, 0, z), iso(W, 0, z), slab, nextKey()));
-      children.push(seg(iso(W, 0, z), iso(W, D, z), slab, nextKey()));
+      const y = innerTop + i * fh;
+      els.push(
+        h("line", {
+          key: key(),
+          className: "structura-front-slab",
+          x1: innerLeft,
+          y1: y,
+          x2: innerLeft + innerW,
+          y2: y,
+          fill: "none",
+        })
+      );
     }
 
-    const padX = 10;
-    const padZBand = fh * 0.2;
-    const gap = 6;
-    const innerW = W - 2 * padX;
-    const winW = (innerW - 2 * gap) / 3;
-
-    for (let f = 1; f < floors; f += 1) {
-      const zLo = f * fh + padZBand;
-      const zHi = (f + 1) * fh - padZBand;
-      if (zHi <= zLo + 2) continue;
+    /* s = storey from bottom: 0 = ground (door only); s = 1..5 = three windows each */
+    for (let s = 1; s < floors; s += 1) {
+      const yBandBot = innerBot - s * fh;
+      const yBandTop = innerBot - (s + 1) * fh;
+      const winTop = yBandTop + padY;
+      const winH = yBandBot - yBandTop - 2 * padY;
+      if (winH < 4) continue;
       for (let j = 0; j < 3; j += 1) {
-        const x0 = padX + j * (winW + gap);
-        const x1 = x0 + winW;
-        children.push(...rectYO(x0, x1, zLo, zHi, opening, `w-${f}-${j}`));
+        const x = ix0 + j * (winW + gap);
+        els.push(
+          h("rect", {
+            key: key(),
+            className: "structura-front-opening",
+            x,
+            y: winTop,
+            width: winW,
+            height: winH,
+            fill: "none",
+          })
+        );
       }
     }
 
-    const doorW = 42;
-    const dzG = 2.5;
-    const xDoor0 = W / 2 - doorW / 2;
-    const xDoor1 = W / 2 + doorW / 2;
-    children.push(...rectYO(xDoor0, xDoor1, dzG, fh - dzG, opening, "door"));
-
-    const pi = parapetInset;
-    const pOuter = [iso(0, 0, H), iso(W, 0, H), iso(W, D, H), iso(0, D, H)];
-    const pInner = [iso(pi, pi, H), iso(W - pi, pi, H), iso(W - pi, D - pi, H), iso(pi, D - pi, H)];
-    for (let i = 0; i < 4; i += 1) {
-      const j = (i + 1) % 4;
-      children.push(seg(pInner[i], pInner[j], wall, nextKey()));
-    }
-    children.push(seg(pOuter[0], pInner[0], wall, nextKey()));
-    children.push(seg(pOuter[1], pInner[1], wall, nextKey()));
-    children.push(seg(pOuter[2], pInner[2], wall, nextKey()));
-    children.push(seg(pOuter[3], pInner[3], wall, nextKey()));
-
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    const bump = (p) => {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-    };
-    [b0, b1, pInner].flat().forEach(bump);
-    for (let f = 1; f < floors; f += 1) {
-      bump(iso(0, 0, f * fh));
-      bump(iso(W, D, f * fh));
-    }
-    const pad = 14;
-    const vbW = maxX - minX + pad * 2;
-    const vbH = maxY - minY + pad * 2;
-    const viewBox = `${(minX - pad).toFixed(2)} ${(minY - pad).toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`;
+    const gTop = innerBot - fh;
+    const gBot = innerBot;
+    const doorW = 44;
+    const doorH = (gBot - gTop) * 0.68;
+    const doorX = (W - doorW) / 2;
+    const doorY = gBot - 4 - doorH;
+    els.push(
+      h("rect", {
+        key: key(),
+        className: "structura-front-door",
+        x: doorX,
+        y: doorY,
+        width: doorW,
+        height: doorH,
+        fill: "none",
+      })
+    );
 
     return h("div", { className: "structura-hero-wireframe-slot", "aria-hidden": true }, [
       h("div", { className: "structura-hero-wireframe-wrap" }, [
-        h("div", { className: "structura-hero-wireframe-float" }, [
-          h(
-            "svg",
-            {
-              className: "structura-iso-svg",
-              xmlns: ns,
-              viewBox,
-              fill: "none",
-              focusable: "false",
-            },
-            h("g", { className: "structura-iso-building" }, ...children)
-          ),
+        h("div", { className: "structura-hero-wireframe-perspective" }, [
+          h("div", { className: "structura-hero-wireframe-float" }, [
+            h("div", { className: "structura-hero-wireframe-spin" }, [
+              h(
+                "svg",
+                {
+                  className: "structura-front-svg",
+                  xmlns: ns,
+                  viewBox: `0 0 ${W} ${H}`,
+                  width: W,
+                  height: H,
+                  fill: "none",
+                  focusable: "false",
+                },
+                h("g", { className: "structura-front-building" }, ...els)
+              ),
+            ]),
+          ]),
         ]),
       ]),
     ]);
