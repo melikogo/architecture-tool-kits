@@ -340,7 +340,7 @@
           treadLine: "- Suggested tread depth: {v} cm",
         },
         ramp: {
-          statusLine: "- Status: {v}",
+          accessLine: "- Accessibility: {v}",
           slopeLine: "- Slope: {v} %",
           lengthLine: "- Ramp length: {v} m",
           heightLine: "- Height: {v} m",
@@ -705,11 +705,13 @@
         referenceBlurb: "Reference: ASHRAE 90.1 & EU EPBD-style limits — verify nationally.",
       },
       ramp: {
-        status: {
-          acceptable: "Acceptable",
-          veryComfortable: "Very comfortable",
-          tooSteep: "Too steep",
+        access: {
+          full: "ADA & EN 17210 fully compliant",
+          enLimit: "EN 17210 limit · ADA compliant",
+          fail: "Fails ADA & EN 17210",
         },
+        standardsReference:
+          "Reference: ADA Standards — Max slope 1:12 (8.33%) · Max rise 30 in (76 cm) | EN 17210 — Max slope 5% recommended, 8% maximum for wheelchair access",
       },
     },
     tr: {
@@ -1050,7 +1052,7 @@
           treadLine: "- Önerilen basamak derinliği: {v} cm",
         },
         ramp: {
-          statusLine: "- Durum: {v}",
+          accessLine: "- Erişilebilirlik: {v}",
           slopeLine: "- Eğim: {v} %",
           lengthLine: "- Rampa uzunluğu: {v} m",
           heightLine: "- Yükseklik: {v} m",
@@ -1416,11 +1418,13 @@
         referenceBlurb: "Referans: ASHRAE 90.1 ve AB EPBD tarzı limitler — ulusal olarak doğrulayın.",
       },
       ramp: {
-        status: {
-          acceptable: "Kabul edilebilir",
-          veryComfortable: "Çok konforlu",
-          tooSteep: "Çok dik",
+        access: {
+          full: "ADA ve EN 17210 tam uyumlu",
+          enLimit: "EN 17210 sınırı · ADA uyumlu",
+          fail: "ADA ve EN 17210 uyumsuz",
         },
+        standardsReference:
+          "Referans: ADA Standartları — Maks. eğim 1:12 (%8,33) · Maks. yükselme 30 in (76 cm) | EN 17210 — Tekerlekli sandalye için önerilen maks. eğim %5, maksimum %8",
       },
     },
   };

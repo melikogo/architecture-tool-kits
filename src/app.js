@@ -2590,24 +2590,18 @@ const h = React.createElement;
 
       if (!Number.isFinite(slopePct) || !Number.isFinite(lengthM) || lengthM <= 0) return null;
 
-      let status = t("ramp.status.acceptable");
-      let statusTone = "mid"; // low | mid | high (monochrome emphasis)
-      if (slopePct <= 5) {
-        status = t("ramp.status.veryComfortable");
-        statusTone = "low";
-      } else if (slopePct > 8) {
-        status = t("ramp.status.tooSteep");
-        statusTone = "high";
-      }
+      const ADA_MAX_SLOPE_PCT = 100 / 12; // 1:12 ≈ 8.333%
+      let accessBadgeKey = "full"; // full | enLimit | fail
+      if (slopePct > ADA_MAX_SLOPE_PCT + 1e-6) accessBadgeKey = "fail";
+      else if (slopePct > 5 + 1e-9) accessBadgeKey = "enLimit";
 
       return {
         slopePct,
         lengthM,
         heightM: hM,
-        status,
-        statusTone,
+        accessBadgeKey,
       };
-    }, [rampTotalHeightM, rampDesiredSlopePct, rampLengthM, rampInputMode, t]);
+    }, [rampTotalHeightM, rampDesiredSlopePct, rampLengthM, rampInputMode]);
 
     function steelProfileSuggestionTranslated(span, tFn) {
       if (span < 4) return tFn("span.steel.i200");
@@ -3498,7 +3492,7 @@ const h = React.createElement;
         t("tools.ramp.label"),
         "",
         t("export.resultsHeader"),
-        ti("export.ramp.statusLine", { v: r.status }),
+        ti("export.ramp.accessLine", { v: t(`ramp.access.${r.accessBadgeKey}`) }),
         ti("export.ramp.slopeLine", { v: formatSmartNumber(r.slopePct) }),
         ti("export.ramp.lengthLine", { v: formatSmartNumber(r.lengthM) }),
         ti("export.ramp.heightLine", { v: formatSmartNumber(r.heightM) }),
@@ -6618,26 +6612,26 @@ const h = React.createElement;
       }
 
       if (activeTool === "ramp") {
-        const statusClass = rampResult
-          ? rampResult.statusTone === "low"
-            ? "bg-[color-mix(in_srgb,var(--st-fg)_12%,var(--st-bg))] text-[var(--st-fg)] border-[var(--st-border)]"
-            : rampResult.statusTone === "high"
-              ? "bg-[var(--st-accent)] text-white border-[var(--st-accent)]"
-              : "bg-[#CA8A04]/15 text-[var(--st-fg)] border-[#CA8A04]/35"
-          : "bg-[color-mix(in_srgb,var(--st-fg)_8%,var(--st-bg))] text-[var(--st-muted)] border-[var(--st-border)]";
+        const accessBadgeClass = rampResult
+          ? rampResult.accessBadgeKey === "full"
+            ? "border-[#16A34A]/45 bg-[#16A34A]/12 text-[#166534] dark:text-[#86EFAC]"
+            : rampResult.accessBadgeKey === "enLimit"
+              ? "border-[#CA8A04]/45 bg-[#CA8A04]/12 text-[#854D0E] dark:text-[#FDE047]"
+              : "border-[#DC2626]/45 bg-[#DC2626]/12 text-[#991B1B] dark:text-[#FCA5A5]"
+          : "border-[var(--st-border)] bg-[color-mix(in_srgb,var(--st-fg)_8%,var(--st-bg))] text-[var(--st-muted)]";
         const meterWidth = rampResult
-          ? rampResult.statusTone === "low"
+          ? rampResult.accessBadgeKey === "full"
             ? "w-1/3"
-            : rampResult.statusTone === "mid"
+            : rampResult.accessBadgeKey === "enLimit"
               ? "w-2/3"
               : "w-full"
           : "w-0";
         const meterTone = rampResult
-          ? rampResult.statusTone === "low"
-            ? "bg-[var(--st-muted)]"
-            : rampResult.statusTone === "mid"
+          ? rampResult.accessBadgeKey === "full"
+            ? "bg-[#16A34A]"
+            : rampResult.accessBadgeKey === "enLimit"
               ? "bg-[#CA8A04]"
-              : "bg-[var(--st-accent)]"
+              : "bg-[#DC2626]"
           : "bg-transparent";
 
         return h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6 items-start" }, [
@@ -6744,13 +6738,28 @@ const h = React.createElement;
             hint: t("common.geometryAndValidation"),
             tone: "results",
             children: h("div", { className: "flex flex-col gap-5" }, [
-              h("div", { className: `inline-flex self-start items-center h-9 px-4 rounded-full border text-[11px] font-extrabold tracking-[.18em] uppercase ${statusClass}` }, rampResult ? rampResult.status : t("common.awaitingRampStatus")),
+              h(
+                "div",
+                {
+                  className: classNames(
+                    "inline-flex self-start items-center min-h-9 max-w-full px-4 py-2 rounded-full border text-[10px] font-extrabold tracking-wide leading-snug",
+                    accessBadgeClass
+                  ),
+                },
+                rampResult ? t(`ramp.access.${rampResult.accessBadgeKey}`) : t("common.awaitingRampStatus")
+              ),
               h("div", { className: "border border-[var(--st-border)] rounded-2xl bg-[color-mix(in_srgb,var(--st-fg)_5%,var(--st-bg))] p-4" }, [
                 h("div", { className: "text-[10px] font-bold tracking-[.24em] uppercase text-[var(--st-muted)] mb-2" }, t("common.slopeQuality")),
                 h("div", { className: "h-2 rounded-full bg-[var(--st-border)] overflow-hidden" }, [
                   h("div", { className: `h-full rounded-full transition-all duration-200 ${meterWidth} ${meterTone}` }),
                 ]),
-                h("div", { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" }, rampResult ? `${rampResult.status} (${formatSmartNumber(rampResult.slopePct)}%)` : t("common.awaitingRampInput")),
+                h(
+                  "div",
+                  { className: "mt-2 text-xs font-semibold text-[var(--st-muted)]" },
+                  rampResult
+                    ? `${t(`ramp.access.${rampResult.accessBadgeKey}`)} (${formatSmartNumber(rampResult.slopePct)}%)`
+                    : t("common.awaitingRampInput")
+                ),
               ]),
               h(ValueBlock, {
                 label: t("common.calculatedSlope"),
@@ -6779,6 +6788,14 @@ const h = React.createElement;
                 unitText: "m",
                 big: true,
               }),
+              h(
+                "div",
+                {
+                  className:
+                    "text-[11px] font-semibold text-[var(--st-muted)] leading-relaxed pt-3 mt-1 border-t border-[var(--st-border)]",
+                },
+                t("ramp.standardsReference")
+              ),
             ]),
           }),
         ]);
