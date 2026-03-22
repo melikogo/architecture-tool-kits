@@ -430,7 +430,7 @@ const h = React.createElement;
     return out;
   })();
 
-  /** Full-bleed animated SVG: grid, wireframe, crane, nodes, hard hat */
+  /** Full-bleed animated SVG: grid, wireframe, nodes, hard hat (crane on far edge: LandingHeroEdgeCrane) */
   function LandingHeroBackgroundScene() {
     const ns = "http://www.w3.org/2000/svg";
     return h("div", { className: "structura-hero-scene", "aria-hidden": true }, [
@@ -483,69 +483,6 @@ const h = React.createElement;
               d: "M 760 520 L 760 220 L 820 180 L 980 145 L 1120 175 L 1180 230 L 1180 540 L 1040 560 L 900 548 L 760 520 Z M 820 180 L 820 520 M 980 145 L 980 530 M 1040 200 L 1120 210 L 1120 520 M 800 320 L 1160 300 M 800 400 L 1140 385",
             })
           ),
-          /* Construction crane — far right */
-          h(
-            "g",
-            { transform: "translate(1095, 538)", opacity: 0.15 },
-            h("line", {
-              className: "structura-hero-stroke",
-              x1: 0,
-              y1: 0,
-              x2: 0,
-              y2: -228,
-              strokeWidth: 1.15,
-            }),
-            h("rect", {
-              className: "structura-hero-fill",
-              x: -10,
-              y: -6,
-              width: 20,
-              height: 10,
-              rx: 1,
-              opacity: 0.55,
-            }),
-            h(
-              "g",
-              { transform: "translate(0,-228)" },
-              h(
-                "g",
-                { className: "structura-hero-crane-arm" },
-                [
-                  h("line", {
-                    className: "structura-hero-stroke",
-                    x1: 0,
-                    y1: 0,
-                    x2: 142,
-                    y2: -6,
-                    strokeWidth: 1,
-                  }),
-                  h("line", {
-                    className: "structura-hero-stroke",
-                    x1: 0,
-                    y1: 0,
-                    x2: -88,
-                    y2: 32,
-                    strokeWidth: 0.9,
-                  }),
-                  h("line", {
-                    className: "structura-hero-stroke",
-                    x1: 118,
-                    y1: -5,
-                    x2: 118,
-                    y2: 62,
-                    strokeWidth: 0.75,
-                    strokeDasharray: "3 4",
-                    opacity: 0.85,
-                  }),
-                  h("path", {
-                    className: "structura-hero-fill",
-                    d: "M 112 58 L 124 58 L 122 70 L 114 70 Z",
-                    opacity: 0.75,
-                  }),
-                ]
-              )
-            )
-          ),
           /* Pulsing intersection nodes */
           ...HERO_PULSE_NODES.map(({ cx, cy, d }, idx) =>
             h("circle", {
@@ -586,44 +523,251 @@ const h = React.createElement;
     ]);
   }
 
-  /** Large faint floor plan for hero right column */
+  /** Silhouette crane on hero right edge — mast, jib, cable, hook; jib swings ±5° */
+  function LandingHeroEdgeCrane() {
+    const ns = "http://www.w3.org/2000/svg";
+    return h("div", { className: "structura-hero-edge-crane", "aria-hidden": true }, [
+      h(
+        "svg",
+        {
+          className: "structura-hero-edge-crane-svg",
+          viewBox: "0 0 100 260",
+          xmlns: ns,
+        },
+        [
+          h("rect", {
+            className: "structura-hero-edge-fill",
+            x: 38,
+            y: 242,
+            width: 24,
+            height: 14,
+            rx: 1,
+            opacity: 0.85,
+          }),
+          h("line", {
+            className: "structura-hero-edge-stroke",
+            x1: 50,
+            y1: 242,
+            x2: 50,
+            y2: 36,
+            strokeWidth: 2.25,
+            strokeLinecap: "square",
+          }),
+          h(
+            "g",
+            { transform: "translate(50,36)" },
+            h(
+              "g",
+              { className: "structura-hero-edge-crane-jib" },
+              [
+                h("line", {
+                  className: "structura-hero-edge-stroke",
+                  x1: 0,
+                  y1: 0,
+                  x2: 72,
+                  y2: -4,
+                  strokeWidth: 2,
+                  strokeLinecap: "square",
+                }),
+                h("line", {
+                  className: "structura-hero-edge-stroke",
+                  x1: 0,
+                  y1: 0,
+                  x2: -28,
+                  y2: 10,
+                  strokeWidth: 1.5,
+                  strokeLinecap: "square",
+                  opacity: 0.9,
+                }),
+                h("line", {
+                  className: "structura-hero-edge-stroke",
+                  x1: 58,
+                  y1: -3,
+                  x2: 58,
+                  y2: 52,
+                  strokeWidth: 1.1,
+                  strokeDasharray: "3 3.5",
+                  opacity: 0.95,
+                }),
+                h("path", {
+                  className: "structura-hero-edge-fill",
+                  d: "M 54 50 L 62 50 L 58 60 Z",
+                  opacity: 0.9,
+                }),
+              ]
+            )
+          ),
+        ]
+      ),
+    ]);
+  }
+
+  /** Detailed faint floor plan: thick walls, door arcs, dimensions, stair */
   function LandingHeroFloorPlanSvg() {
     const ns = "http://www.w3.org/2000/svg";
+    const mk = "url(#structura-fp-arrow)";
     return h(
       "svg",
       {
-        className: "structura-hero-floorplan-svg w-full max-w-[260px] sm:max-w-[300px] md:max-w-[420px] mx-auto md:mx-0 md:ml-auto",
-        viewBox: "0 0 360 300",
+        className: "structura-hero-floorplan-svg w-full max-w-[280px] sm:max-w-[340px] md:max-w-[460px] mx-auto md:mx-0 md:ml-auto",
+        viewBox: "0 0 440 360",
         fill: "none",
         xmlns: ns,
         "aria-hidden": true,
       },
-      h("g", { strokeWidth: 1, strokeLinecap: "square", vectorEffect: "non-scaling-stroke" }, [
-        h("rect", {
-          className: "structura-hero-floor-stroke",
-          x: 8,
-          y: 8,
-          width: 344,
-          height: 284,
-          rx: 2,
-        }),
-        h("path", {
-          className: "structura-hero-floor-stroke",
-          d: "M 120 8 V 292 M 240 8 V 292 M 8 110 H 352 M 8 200 H 352 M 120 110 H 240 M 200 110 V 200",
-        }),
-        h("path", {
-          className: "structura-hero-floor-stroke",
-          strokeDasharray: "4 3",
-          opacity: 0.85,
-          d: "M 8 56 H 352 M 8 246 H 260",
-        }),
-        h("path", {
-          className: "structura-hero-floor-stroke",
-          d: "M 260 200 A 22 22 0 0 1 304 200",
-        }),
-        h("circle", { className: "structura-hero-floor-stroke", cx: 52, cy: 56, r: 4 }),
-        h("circle", { className: "structura-hero-floor-stroke", cx: 310, cy: 246, r: 3.5 }),
-      ])
+      [
+        h("defs", null, [
+          h(
+            "marker",
+            {
+              id: "structura-fp-arrow",
+              markerWidth: 5,
+              markerHeight: 5,
+              refX: 4,
+              refY: 2.5,
+              orient: "auto",
+              markerUnits: "strokeWidth",
+            },
+            h("path", { className: "structura-hero-floor-fill", d: "M0,0 L5,2.5 L0,5 Z" })
+          ),
+        ]),
+        h("g", { vectorEffect: "non-scaling-stroke" }, [
+          /* —— Thick walls (exterior + interior) —— */
+          h("rect", {
+            className: "structura-hero-floor-w structura-hero-floor-wall",
+            x: 36,
+            y: 36,
+            width: 368,
+            height: 248,
+            strokeWidth: 5,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 210,
+            y1: 36,
+            x2: 210,
+            y2: 98,
+            strokeWidth: 4,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 210,
+            y1: 148,
+            x2: 210,
+            y2: 284,
+            strokeWidth: 4,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 36,
+            y1: 182,
+            x2: 92,
+            y2: 182,
+            strokeWidth: 4,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 138,
+            y1: 182,
+            x2: 210,
+            y2: 182,
+            strokeWidth: 4,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 210,
+            y1: 128,
+            x2: 404,
+            y2: 128,
+            strokeWidth: 3.5,
+          }),
+          h("line", {
+            className: "structura-hero-floor-w structura-hero-floor-wall-inner",
+            x1: 292,
+            y1: 128,
+            x2: 292,
+            y2: 284,
+            strokeWidth: 3.5,
+          }),
+          /* —— Door arcs (quarter circles) —— */
+          h("path", {
+            className: "structura-hero-floor-door structura-hero-floor-wall-inner",
+            d: "M 210 98 A 22 22 0 0 1 188 120",
+            strokeWidth: 2,
+          }),
+          h("path", {
+            className: "structura-hero-floor-door structura-hero-floor-wall-inner",
+            d: "M 92 182 A 20 20 0 0 1 112 162",
+            strokeWidth: 2,
+          }),
+          h("path", {
+            className: "structura-hero-floor-door structura-hero-floor-wall-inner",
+            d: "M 330 284 A 24 24 0 0 1 306 260",
+            strokeWidth: 2,
+          }),
+          h("path", {
+            className: "structura-hero-floor-door structura-hero-floor-wall-inner",
+            d: "M 404 200 A 18 18 0 0 1 386 218",
+            strokeWidth: 2,
+          }),
+          /* —— Staircase symbol (rect + treads) —— */
+          h("rect", {
+            className: "structura-hero-floor-thin",
+            x: 224,
+            y: 198,
+            width: 56,
+            height: 72,
+            strokeWidth: 2,
+          }),
+          h("line", { className: "structura-hero-floor-thin", x1: 224, y1: 210, x2: 280, y2: 210, strokeWidth: 1.25 }),
+          h("line", { className: "structura-hero-floor-thin", x1: 224, y1: 222, x2: 280, y2: 222, strokeWidth: 1.25 }),
+          h("line", { className: "structura-hero-floor-thin", x1: 224, y1: 234, x2: 280, y2: 234, strokeWidth: 1.25 }),
+          h("line", { className: "structura-hero-floor-thin", x1: 224, y1: 246, x2: 280, y2: 246, strokeWidth: 1.25 }),
+          h("line", { className: "structura-hero-floor-thin", x1: 224, y1: 258, x2: 280, y2: 258, strokeWidth: 1.25 }),
+          h("path", {
+            className: "structura-hero-floor-thin",
+            d: "M 224 198 L 280 270",
+            strokeWidth: 1,
+            strokeDasharray: "2 3",
+            opacity: 0.85,
+          }),
+          /* —— Dimension lines + arrows —— */
+          h("line", {
+            className: "structura-hero-floor-dim",
+            x1: 36,
+            y1: 308,
+            x2: 404,
+            y2: 308,
+            markerEnd: mk,
+            markerStart: mk,
+          }),
+          h("line", { className: "structura-hero-floor-dim", x1: 36, y1: 302, x2: 36, y2: 314, strokeWidth: 0.5 }),
+          h("line", { className: "structura-hero-floor-dim", x1: 404, y1: 302, x2: 404, y2: 314, strokeWidth: 0.5 }),
+          h("line", {
+            className: "structura-hero-floor-dim",
+            x1: 22,
+            y1: 36,
+            x2: 22,
+            y2: 284,
+            markerEnd: mk,
+            markerStart: mk,
+          }),
+          h("line", { className: "structura-hero-floor-dim", x1: 16, y1: 36, x2: 28, y2: 36, strokeWidth: 0.5 }),
+          h("line", { className: "structura-hero-floor-dim", x1: 16, y1: 284, x2: 28, y2: 284, strokeWidth: 0.5 }),
+          h("line", {
+            className: "structura-hero-floor-dim",
+            x1: 210,
+            y1: 296,
+            x2: 404,
+            y2: 296,
+            markerEnd: mk,
+            markerStart: mk,
+            opacity: 0.85,
+          }),
+          h("line", { className: "structura-hero-floor-dim", x1: 210, y1: 290, x2: 210, y2: 302, strokeWidth: 0.5 }),
+          h("line", { className: "structura-hero-floor-dim", x1: 404, y1: 290, x2: 404, y2: 302, strokeWidth: 0.5 }),
+        ]),
+      ]
     );
   }
 
@@ -676,9 +820,12 @@ const h = React.createElement;
       h("header", { className: "pt-6 flex justify-end shrink-0" }, navToggles),
       h(
         "section",
-        { className: "flex-1 flex flex-col justify-center pb-[60px] min-h-0 w-full" },
-        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 items-center w-full" }, [
-          h("div", { className: "min-w-0 order-1" }, [
+        { className: "flex-1 flex flex-col min-h-0 w-full pb-10" },
+        h("div", {
+          className:
+            "grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 flex-1 min-h-0 w-full items-stretch",
+        }, [
+          h("div", { className: "min-w-0 order-1 flex flex-col justify-center" }, [
             h("div", { className: "min-w-0" }, [
               h(
                 "h1",
@@ -714,7 +861,7 @@ const h = React.createElement;
               ])
             ),
           ]),
-          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[180px] md:min-h-[280px]" }, [
+          h("div", { className: "order-2 flex justify-center md:justify-end items-center min-h-[160px] md:min-h-0 py-6 md:py-0" }, [
             h(LandingHeroFloorPlanSvg, null),
           ]),
         ])
@@ -847,7 +994,7 @@ const h = React.createElement;
         id: "structura-about",
         "aria-labelledby": "structura-about-heading",
         ref: sectionRef,
-        className: "max-w-6xl mx-auto w-full px-4 pt-8 pb-12 md:pt-10 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
+        className: "max-w-6xl mx-auto w-full px-4 pt-0 pb-12 md:pb-16 border-t border-[var(--st-border)] bg-[var(--st-bg)]",
       },
       [h("h2", { id: "structura-about-heading", className: "sr-only" }, aboutHeading), columnsContent]
     );
@@ -5770,6 +5917,7 @@ const h = React.createElement;
         h("div", { className: "structura-hero-shell" }, [
           h("div", { className: "structura-hero-grid-bg", "aria-hidden": true }),
           h(LandingHeroBackgroundScene, null),
+          h(LandingHeroEdgeCrane, null),
           h(LandingHeroBlock, {
             navToggles: h(NavToggles, { theme, onThemeToggle: handleThemeToggle }),
             tagline: t("landing.tagline"),

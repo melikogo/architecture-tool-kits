@@ -126,37 +126,92 @@ html.dark .structura-hero-scene {
   }
 }
 
-.structura-hero-crane-arm {
-  transform-origin: 0px 0px;
-  transform-box: fill-box;
-  animation: structura-crane-rotate 20s linear infinite;
+/* Far-right edge crane (silhouette, slow swing) */
+.structura-hero-edge-crane {
+  position: absolute;
+  right: 0;
+  bottom: clamp(8%, 12vh, 22%);
+  width: min(100px, 12vw);
+  z-index: 2;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.15);
 }
 
-@keyframes structura-crane-rotate {
-  from {
-    transform: rotate(0deg);
+html:not(.dark) .structura-hero-edge-crane {
+  color: rgba(10, 10, 10, 0.15);
+}
+
+.structura-hero-edge-crane-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.structura-hero-edge-crane-svg .structura-hero-edge-stroke {
+  stroke: currentColor;
+  fill: none;
+}
+
+.structura-hero-edge-crane-svg .structura-hero-edge-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.structura-hero-edge-crane-jib {
+  transform-origin: 0 0;
+  animation: structura-edge-crane-swing 4s ease-in-out infinite;
+}
+
+@keyframes structura-edge-crane-swing {
+  0%,
+  100% {
+    transform: rotate(-5deg);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    transform: rotate(5deg);
   }
 }
 
-/* Floor plan column (right) */
+/* Floor plan column (right) — faint white/dark strokes @ ~10% */
 .structura-hero-floorplan-svg {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
   height: auto;
   margin-left: auto;
-  opacity: 0.1;
-  color: rgba(15, 23, 42, 0.9);
+  --fp-stroke: rgba(255, 255, 255, 0.1);
 }
 
-html.dark .structura-hero-floorplan-svg {
-  color: rgba(255, 255, 255, 0.95);
+html:not(.dark) .structura-hero-floorplan-svg {
+  --fp-stroke: rgba(10, 10, 10, 0.1);
 }
 
-.structura-hero-floorplan-svg .structura-hero-floor-stroke {
-  stroke: currentColor;
+.structura-hero-floorplan-svg .structura-hero-floor-w {
+  stroke: var(--fp-stroke);
+  fill: none;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.structura-hero-floorplan-svg .structura-hero-floor-thin {
+  stroke: var(--fp-stroke);
+  fill: none;
+  stroke-linecap: butt;
+}
+
+.structura-hero-floorplan-svg .structura-hero-floor-fill {
+  fill: var(--fp-stroke);
+  stroke: none;
+}
+
+.structura-hero-floorplan-svg .structura-hero-floor-dim {
+  stroke: var(--fp-stroke);
+  fill: none;
+  stroke-width: 0.65;
+}
+
+.structura-hero-floorplan-svg .structura-hero-floor-door {
+  stroke: var(--fp-stroke);
   fill: none;
 }
 
@@ -255,9 +310,13 @@ body {
   }
 
   .structura-hero-grid-drift,
-  .structura-hero-crane-arm,
+  .structura-hero-edge-crane-jib,
   .structura-hero-node {
     animation: none !important;
+  }
+
+  .structura-hero-edge-crane-jib {
+    transform: none !important;
   }
 
   .structura-hero-grid-drift {
