@@ -477,11 +477,13 @@ html.dark .structura-hero-construction-building {
 }
 
 .structura-wire-building {
-  --structura-wire-line: rgba(255, 255, 255, 0.2);
-  --structura-wire-lit: rgba(255, 255, 255, 0.38);
-  --structura-wire-lit-border: rgba(255, 255, 255, 0.45);
-  --structura-wire-dark: rgba(255, 255, 255, 0.06);
-  --structura-wire-dark-border: rgba(255, 255, 255, 0.12);
+  /* Wall / structure: 15% opacity */
+  --structura-wire-line: rgba(255, 255, 255, 0.15);
+  /* Windows: lit 20%, dark 8% */
+  --structura-wire-lit: rgba(255, 255, 255, 0.2);
+  --structura-wire-lit-border: rgba(255, 255, 255, 0.2);
+  --structura-wire-dark: rgba(255, 255, 255, 0.08);
+  --structura-wire-dark-border: rgba(255, 255, 255, 0.08);
   width: 200px;
   height: 280px;
   position: relative;
@@ -490,11 +492,11 @@ html.dark .structura-hero-construction-building {
 }
 
 html:not(.dark) .structura-wire-building {
-  --structura-wire-line: rgba(15, 23, 42, 0.18);
-  --structura-wire-lit: rgba(15, 23, 42, 0.28);
-  --structura-wire-lit-border: rgba(15, 23, 42, 0.34);
-  --structura-wire-dark: rgba(15, 23, 42, 0.04);
-  --structura-wire-dark-border: rgba(15, 23, 42, 0.1);
+  --structura-wire-line: rgba(15, 23, 42, 0.15);
+  --structura-wire-lit: rgba(15, 23, 42, 0.2);
+  --structura-wire-lit-border: rgba(15, 23, 42, 0.2);
+  --structura-wire-dark: rgba(15, 23, 42, 0.08);
+  --structura-wire-dark-border: rgba(15, 23, 42, 0.08);
 }
 
 .structura-wire-face {
@@ -504,7 +506,7 @@ html:not(.dark) .structura-wire-building {
   top: 0;
   transform-style: preserve-3d;
   backface-visibility: visible;
-  border: 1px solid var(--structura-wire-line);
+  border: 2px solid var(--structura-wire-line);
   background: transparent;
 }
 
@@ -551,41 +553,127 @@ html:not(.dark) .structura-wire-building {
 }
 
 .structura-wire-face--side {
+  /* ~3 vertical bays, 2px mullion strokes */
   background-image: repeating-linear-gradient(
     90deg,
     transparent 0,
-    transparent 15px,
-    var(--structura-wire-line) 15px,
-    var(--structura-wire-line) 16px
+    transparent 19px,
+    var(--structura-wire-line) 19px,
+    var(--structura-wire-line) 21px
   );
   background-origin: border-box;
 }
 
 .structura-wire-face-inner {
   position: absolute;
-  inset: 11px 13px 15px 13px;
+  inset: 10px 11px 12px 11px;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.structura-wire-windows {
-  display: grid;
-  grid-template-rows: repeat(5, 1fr);
-  grid-template-columns: repeat(4, 1fr);
-  gap: 5px 7px;
-  width: 100%;
+.structura-wire-facade {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+  gap: 5px;
 }
 
+.structura-wire-facade--back .structura-wire-floors {
+  gap: 7px;
+}
+
+/* Solid roofline cap (2px) under parapet plane */
+.structura-wire-roofline {
+  flex-shrink: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--structura-wire-line);
+  border-radius: 0;
+}
+
+.structura-wire-floors {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 0;
+}
+
+.structura-wire-floor-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px 7px;
+  min-height: 0;
+  align-items: stretch;
+}
+
+/* Varied column weights per floor — breaks uniform grid */
+.structura-wire-floor-row--r1 {
+  grid-template-columns: 1.12fr 0.82fr 1.06fr;
+}
+.structura-wire-floor-row--r2 {
+  grid-template-columns: 0.86fr 1.18fr 0.92fr;
+}
+.structura-wire-floor-row--r3 {
+  grid-template-columns: 1.02fr 0.9fr 1.1fr;
+}
+.structura-wire-floor-row--r4 {
+  grid-template-columns: 0.94fr 1.08fr 0.88fr;
+}
+
+.structura-wire-floor-row--b1 {
+  grid-template-columns: 0.9fr 1.05fr 0.95fr;
+}
+.structura-wire-floor-row--b2 {
+  grid-template-columns: 1.1fr 0.88fr 1.04fr;
+}
+.structura-wire-floor-row--b3 {
+  grid-template-columns: 0.84fr 1.12fr 0.9fr;
+}
+.structura-wire-floor-row--b4 {
+  grid-template-columns: 1.06fr 0.92fr 1fr;
+}
+.structura-wire-floor-row--b5 {
+  grid-template-columns: 0.96fr 1fr 1.04fr;
+}
+
+.structura-wire-floor-row--ground {
+  grid-template-columns: 1fr minmax(28px, 20%) 1fr;
+  align-items: end;
+  flex: 1.12;
+  padding-top: 3px;
+  gap: 4px 6px;
+}
+
+.structura-wire-door {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 36px;
+  height: 82%;
+  min-height: 38px;
+  border: 2px solid var(--structura-wire-line);
+  border-radius: 1px 1px 0 0;
+  background: transparent;
+  justify-self: center;
+  align-self: end;
+}
+
+/* Window strokes 0.5px; walls stay 2px on .structura-wire-face */
 .structura-wire-win {
   box-sizing: border-box;
-  border: 1px solid var(--structura-wire-dark-border);
-  min-height: 6px;
+  border: 0.5px solid var(--structura-wire-dark-border);
+  min-height: 4px;
+  align-self: center;
+  justify-self: stretch;
 }
 
 .structura-wire-win--lit {
   background: var(--structura-wire-lit);
   border-color: var(--structura-wire-lit-border);
-  opacity: 0.95;
 }
 
 .structura-wire-win--dark {
@@ -593,10 +681,38 @@ html:not(.dark) .structura-wire-building {
   border-color: var(--structura-wire-dark-border);
 }
 
+/* Slight per-cell size variation */
+.structura-wire-win--v0 {
+  max-height: 94%;
+  min-height: 70%;
+  width: 100%;
+}
+
+.structura-wire-win--v1 {
+  max-height: 88%;
+  min-height: 74%;
+  width: 92%;
+  justify-self: center;
+}
+
+.structura-wire-win--v2 {
+  max-height: 100%;
+  min-height: 66%;
+  width: 100%;
+}
+
+.structura-wire-win--flank {
+  max-width: 78%;
+  min-height: 52%;
+  max-height: 62%;
+  width: 100%;
+  justify-self: center;
+}
+
 .structura-wire-parapet {
   position: absolute;
-  inset: 5px;
-  border: 1px solid var(--structura-wire-line);
+  inset: 4px;
+  border: 2px solid var(--structura-wire-line);
   pointer-events: none;
   box-sizing: border-box;
 }

@@ -618,49 +618,119 @@ const h = React.createElement;
 
   /** Center hero: CSS 3D wireframe building (rotateY + float); md+ only. */
   function LandingHeroWireframe3D() {
-    const litFront = [
-      [1, 0, 1, 0],
-      [0, 1, 0, 1],
-      [1, 1, 0, 0],
-      [0, 0, 1, 1],
-      [1, 0, 0, 1],
+    /** 4 upper floors × 3 windows: [lit, rowVariant] per cell; variants vary column weights in CSS */
+    const frontUpper = [
+      [
+        { lit: true, v: "r1" },
+        { lit: false, v: "r1" },
+        { lit: true, v: "r1" },
+      ],
+      [
+        { lit: false, v: "r2" },
+        { lit: true, v: "r2" },
+        { lit: false, v: "r2" },
+      ],
+      [
+        { lit: true, v: "r3" },
+        { lit: true, v: "r3" },
+        { lit: false, v: "r3" },
+      ],
+      [
+        { lit: false, v: "r4" },
+        { lit: false, v: "r4" },
+        { lit: true, v: "r4" },
+      ],
     ];
-    const litBack = [
-      [0, 1, 0, 1],
-      [1, 0, 1, 0],
-      [0, 0, 1, 1],
-      [1, 1, 0, 0],
-      [0, 1, 1, 0],
+    const backRows = [
+      [
+        { lit: false, v: "b1" },
+        { lit: true, v: "b1" },
+        { lit: false, v: "b1" },
+      ],
+      [
+        { lit: true, v: "b2" },
+        { lit: false, v: "b2" },
+        { lit: true, v: "b2" },
+      ],
+      [
+        { lit: false, v: "b3" },
+        { lit: false, v: "b3" },
+        { lit: true, v: "b3" },
+      ],
+      [
+        { lit: true, v: "b4" },
+        { lit: false, v: "b4" },
+        { lit: false, v: "b4" },
+      ],
+      [
+        { lit: true, v: "b5" },
+        { lit: false, v: "b5" },
+        { lit: true, v: "b5" },
+      ],
     ];
-    const winCells = (pattern, keyPrefix) =>
-      pattern.flatMap((row, r) =>
-        row.map((lit, c) =>
-          h("span", {
-            key: `${keyPrefix}-${r}-${c}`,
-            className: lit ? "structura-wire-win structura-wire-win--lit" : "structura-wire-win structura-wire-win--dark",
-          })
+
+    const winClass = (lit) => (lit ? "structura-wire-win structura-wire-win--lit" : "structura-wire-win structura-wire-win--dark");
+
+    const frontFacade = h("div", { className: "structura-wire-facade" }, [
+      h("div", { className: "structura-wire-roofline", "aria-hidden": true }),
+      h(
+        "div",
+        { className: "structura-wire-floors" },
+        [
+          ...frontUpper.map((row, r) =>
+            h(
+              "div",
+              {
+                key: `wfr-${r}`,
+                className: `structura-wire-floor-row structura-wire-floor-row--${row[0].v}`,
+              },
+              row.map((cell, c) =>
+                h("span", {
+                  key: `wf-${r}-${c}`,
+                  className: `${winClass(cell.lit)} structura-wire-win--v${(c + r) % 3}`,
+                })
+              )
+            )
+          ),
+          h("div", { className: "structura-wire-floor-row structura-wire-floor-row--ground" }, [
+            h("span", { key: "wg-l", className: `${winClass(false)} structura-wire-win--flank structura-wire-win--v0` }),
+            h("div", { key: "wg-d", className: "structura-wire-door", "aria-hidden": true }),
+            h("span", { key: "wg-r", className: `${winClass(true)} structura-wire-win--flank structura-wire-win--v1` }),
+          ]),
+        ]
+      ),
+    ]);
+
+    const backFacade = h("div", { className: "structura-wire-facade structura-wire-facade--back" }, [
+      h("div", { className: "structura-wire-roofline", "aria-hidden": true }),
+      h(
+        "div",
+        { className: "structura-wire-floors" },
+        backRows.map((row, r) =>
+          h(
+            "div",
+            {
+              key: `wbr-${r}`,
+              className: `structura-wire-floor-row structura-wire-floor-row--${row[0].v}`,
+            },
+            row.map((cell, c) =>
+              h("span", {
+                key: `wb-${r}-${c}`,
+                className: `${winClass(cell.lit)} structura-wire-win--v${(c + r + 1) % 3}`,
+              })
+            )
+          )
         )
-      );
+      ),
+    ]);
 
     return h("div", { className: "structura-hero-wireframe-slot", "aria-hidden": true }, [
       h("div", { className: "structura-hero-wireframe-perspective" }, [
         h("div", { className: "structura-hero-wireframe-float" }, [
           h("div", { className: "structura-hero-wireframe-spin" }, [
             h("div", { className: "structura-wire-building" }, [
-              h(
-                "div",
-                { className: "structura-wire-face structura-wire-face--front" },
-                h("div", { className: "structura-wire-face-inner" }, [
-                  h("div", { className: "structura-wire-windows" }, winCells(litFront, "wf")),
-                ])
-              ),
-              h(
-                "div",
-                { className: "structura-wire-face structura-wire-face--back" },
-                h("div", { className: "structura-wire-face-inner" }, [
-                  h("div", { className: "structura-wire-windows" }, winCells(litBack, "wb")),
-                ])
-              ),
+              h("div", { className: "structura-wire-face structura-wire-face--front" }, h("div", { className: "structura-wire-face-inner" }, [frontFacade])),
+              h("div", { className: "structura-wire-face structura-wire-face--back" }, h("div", { className: "structura-wire-face-inner" }, [backFacade])),
               h("div", { className: "structura-wire-face structura-wire-face--right structura-wire-face--side" }),
               h("div", { className: "structura-wire-face structura-wire-face--left structura-wire-face--side" }),
               h("div", { className: "structura-wire-face structura-wire-face--top" }, [
