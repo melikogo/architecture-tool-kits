@@ -1108,7 +1108,7 @@ const h = React.createElement;
   }
 
   /** Landing hero: letter stagger, tagline, CTA — GSAP (CTA opacity only; hover scale via CSS inner) */
-  function LandingHeroBlock({ navToggles, tagline, openLabel, onOpenToolkit }) {
+  function LandingHeroBlock({ navToggles, tagline, heroSubline, openLabel, onOpenToolkit }) {
     const wrapRef = useRef(null);
     useGSAP(
       () => {
@@ -1116,27 +1116,36 @@ const h = React.createElement;
         if (!root) return;
         const letters = root.querySelectorAll(".structura-hero-char");
         const taglineEl = root.querySelector("[data-hero-tagline]");
+        const sublineEl = root.querySelector("[data-hero-subline]");
         const ctaEl = root.querySelector("[data-hero-cta]");
         if (!letters.length || !taglineEl || !ctaEl) return;
 
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduce) {
           gsap.set(letters, { opacity: 1, y: 0, clearProps: "transform" });
-          gsap.set([taglineEl, ctaEl], { opacity: 1, y: 0, clearProps: "transform" });
+          const reduceTargets = [taglineEl, ctaEl];
+          if (sublineEl) reduceTargets.push(sublineEl);
+          gsap.set(reduceTargets, { opacity: 1, y: 0, clearProps: "transform" });
           return;
         }
 
-        gsap.killTweensOf([letters, taglineEl, ctaEl]);
+        const animTargets = [letters, taglineEl, ctaEl];
+        if (sublineEl) animTargets.push(sublineEl);
+        gsap.killTweensOf(animTargets);
         gsap.set(letters, { opacity: 0, y: 24 });
         gsap.set(taglineEl, { opacity: 0, y: 16 });
+        if (sublineEl) gsap.set(sublineEl, { opacity: 0, y: 16 });
         gsap.set(ctaEl, { opacity: 0 });
 
         const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
         tl.to(letters, { opacity: 1, y: 0, duration: 0.45, stagger: 0.03 })
-          .to(taglineEl, { opacity: 1, y: 0, duration: 0.45 }, ">")
-          .to(ctaEl, { opacity: 1, duration: 0.35 }, ">");
+          .to(taglineEl, { opacity: 1, y: 0, duration: 0.45 }, ">");
+        if (sublineEl) {
+          tl.to(sublineEl, { opacity: 1, y: 0, duration: 0.45 }, ">");
+        }
+        tl.to(ctaEl, { opacity: 1, duration: 0.35 }, ">");
       },
-      { scope: wrapRef, dependencies: [tagline, openLabel] }
+      { scope: wrapRef, dependencies: [tagline, heroSubline, openLabel] }
     );
 
     const title = "STRUCTURA";
@@ -1182,6 +1191,17 @@ const h = React.createElement;
               },
               tagline
             ),
+            heroSubline
+              ? h(
+                  "p",
+                  {
+                    "data-hero-subline": true,
+                    className: "mt-3 text-[17px] md:text-[18px] text-[var(--st-muted)] font-normal max-w-xl leading-relaxed",
+                    style: { willChange: "transform, opacity" },
+                  },
+                  heroSubline
+                )
+              : null,
             h(
               "button",
               {
@@ -1388,16 +1408,8 @@ const h = React.createElement;
         ),
         h(
           "p",
-          { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium text-center max-w-xl mx-auto mb-3" },
+          { className: "text-[15px] text-[var(--st-muted)] leading-relaxed font-medium text-center max-w-xl mx-auto mb-6" },
           t("landing.contactSubtext")
-        ),
-        h(
-          "p",
-          {
-            className:
-              "text-[13px] sm:text-sm italic text-[var(--st-muted)]/90 text-center max-w-xl mx-auto mb-6 leading-relaxed",
-          },
-          t("landing.contactTagline")
         ),
         h(
           "div",
@@ -8005,6 +8017,7 @@ const h = React.createElement;
           h(LandingHeroBlock, {
             navToggles: h(NavToggles, { theme, onThemeToggle: handleThemeToggle }),
             tagline: t("landing.tagline"),
+            heroSubline: t("landing.contactTagline"),
             openLabel: t("landing.openToolkit"),
             onOpenToolkit: () => document.getElementById("structura-tool-grid")?.scrollIntoView({ behavior: "smooth" }),
           }),
